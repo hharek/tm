@@ -87,9 +87,10 @@ class TM
 {sequence_create}
 CREATE TABLE "{table}"
 (
-{field}{primary}{unique}{foreign}
+{field}{primary}{foreign}
 );\n
 {sequence_owned}
+{unique}
 {comment_table}
 {comment_column}
 SQL
@@ -114,20 +115,27 @@ SQL
 \t"{identified}" {sql_type}{null}{default}
 SQL
 ,
-		"primary" => 
+		"constraint_primary" => 
 <<<SQL
 ,\n\tCONSTRAINT "{table}_PK" PRIMARY KEY ({pk_field})
 SQL
 ,
-		"unique" => 
-<<<SQL
-,\n\tCONSTRAINT "{table}_{key}" UNIQUE ({un_field})
-SQL
-,
-		"foreign" =>
+		
+		"constraint_foreign" =>
 <<<SQL
 ,\n\tCONSTRAINT "{table}_{key}" FOREIGN KEY ("{identified}")
 \t\tREFERENCES "{fk_table}" ("{fk_field}") ON DELETE CASCADE\n
+SQL
+,
+		"index_unique" => 
+<<<SQL
+CREATE UNIQUE INDEX "{table}_{key}" ON "{table}" ({field});\n
+SQL
+,
+		"index_unique_null" => 
+<<<SQL
+CREATE UNIQUE INDEX "{table}_{key}" ON "{table}" ({field_all}) WHERE "{field}" IS NOT NULL;
+CREATE UNIQUE INDEX "{table}_{key}_NULL" ON "{table}" ({field_all_but}) WHERE "{field}" IS NULL;\n
 SQL
 ,
 		"comment_table" => 
@@ -160,7 +168,49 @@ FROM
 {order}
 {limit}
 SQL
+,
+		"unique" => 
+<<<SQL
+SELECT 
+	true
+FROM 
+	"{table}"
+WHERE 
+	{where}
+SQL
+,
+		"insert" => 
+<<<SQL
+INSERT INTO "{table}" ({field})
+VALUES ({values_num})
+RETURNING "{primary}"
+SQL
+,
+		"update" => 
+<<<SQL
+UPDATE "{table}"
+SET 
+{field}
+WHERE
+	"{primary}" = \${num}
+SQL
+,
+		"delete" => 
+<<<SQL
+DELETE
+FROM
+	"{table}"
+WHERE
+	"{primary}" = \$1
+SQL
 	];
+	
+	/**
+	 * Таблица, с которой собраны meta-данные
+	 * 
+	 * @var string
+	 */
+	protected static $_meta_table = "";
 	
 	/**
 	 * Проверка на существование по ID
@@ -187,7 +237,7 @@ SQL
 			}
 		}
 		
-		/* Запрос */
+		/* SQL */
 		$table = static::$_table;
 		$column = static::$_primary['identified'];
 		$query = 
@@ -199,8 +249,11 @@ FROM
 WHERE 
 	"{$column}" = $1
 SQL;
+	
+		/* Запрос */
 		$result = pg_query_params(static::$_db_conn, $query, [$primary]);
 		$count = pg_num_rows($result);
+		pg_free_result($result);
 		if ($count === 0)
 		{
 			if ($exception)
@@ -212,8 +265,6 @@ SQL;
 				return false;
 			}
 		}
-		
-		pg_free_result($result);
 		
 		return true;
 	}
@@ -288,17 +339,19 @@ SQL;
 		$sql_where = "";
 		if (!empty($where))
 		{
+			$where_info = static::_data_info($where);
+			
 			$sql_where .= "WHERE\n";
 			static::check($where);
 			$param_num = 1;
-			foreach ($where as $identified => $value)
+			foreach ($where_info as $f)
 			{
 				if ($param_num !== 1)
 				{
 					$sql_where .= " AND\n";
 				}
 				
-				$sql_where .= "\t\"{$identified}\" = \${$param_num}";
+				$sql_where .= "\t" . TM_FType::get_sql_where($f, $param_num);
 				$param_num++;
 			}
 		}
@@ -328,8 +381,9 @@ SQL;
 		}
 		
 		/* SQL для полей */
+		$field_info = static::_data_info($field);
 		$sql_field = "";
-		foreach (static::$_field as $key => $f)
+		foreach ($field_info as $key => $f)
 		{
 			if (!in_array($f['identified'], $field))
 			{
@@ -421,11 +475,13 @@ SQL;
 	 * Проверка данных
 	 * 
 	 * @param array $data
-	 * @param bool $exception
-	 * @return array
+	 * @param bool $exception_many
 	 */
-	public static function check(array $data, bool $exception = false) : array
+	public static function check(array $data, bool $exception_many = true)
 	{
+		/* Собираем данные */
+		static::_meta();
+		
 		/* Массив с ошибками */
 		$err = [];
 		
@@ -435,194 +491,366 @@ SQL;
 			throw new Exception("Нет данных для проверки.");
 		}
 		
+		/* Данные по полям */
+		$fdata = static::_data_info($data);
+		
 		/* Проверка */
-		foreach ($data as $identified => $value)
+		foreach ($fdata as $f)
 		{
-			/* Определяем данные по полю */
-			$field = [];
-			foreach (static::$_field as $f)
+			/* NULL */
+			if ($f['value'] === null or $f['value'] === "")
 			{
-				if ($f['identified'] === $identified)
+				if (isset($f['null']) and $f['null'] === true)
 				{
-					$field = $f;
-					break;
+					continue;
 				}
-			}
-			
-			if (empty($field))
-			{
-				throw new Exception("Таблица «" . static::$_table . "». Поле с идентификтором «{$identified}» отсутствует.");
 			}
 			
 			/* Не является строкой */
-			if (!is_scalar($value))
+			if (!is_scalar($f['value']))
 			{
-				$error = "Поле «{$field['name']}» задано неверно. Не является строкой.";
-				if ($exception)
+				$error = "Поле «{$f['name']}» задано неверно. Не является строкой.";
+				if ($exception_many)
 				{
-					throw new Exception($error);
+					$err[$f['identified']] = $error;
+					continue;
 				}
 				else
 				{
-					$err[$identified] = $error;
-					continue;
+					throw new Exception($error);
 				}
 			}
-			$value = (string)$value;
+			$f['value'] = (string)$f['value'];
 
 			/* Не заполнено */
-			if (!isset($field['default']) and trim($value) === "")
+			if (!isset($f['default']) and trim($f['value']) === "")
 			{
-				$error = "Поле «{$field['name']}» не заполнено.";
-				if ($exception)
+				$error = "«" . static::$_name . "». Поле «{$f['name']}» не заполнено.";
+				if ($exception_many)
 				{
-					throw new Exception($error);
+					$err[$f['identified']] = $error;
+					continue;
 				}
 				else
 				{
-					$err[$identified] = $error;
-					continue;
+					throw new Exception($error);
 				}	
 			}
 			
 			/* Существует ли поле */
-			if (!TM_FType::check($field['type'], $value))
+			if (!TM_FType::check($f['type'], $f['value']))
 			{
-				$error = "Поле «{$field['name']}» задано неверно. " . TM_FType::get_last_error();
-				if ($exception)
+				$error = "Поле «{$f['name']}» задано неверно. " . TM_FType::get_last_error();
+				if ($exception_many)
 				{
-					throw new Exception($error);
+					$err[$f['identified']] = $error;
+					continue;
 				}
 				else
 				{
-					$err[$identified] = $error;
-					continue;
+					throw new Exception($error);
 				}	
 			}
 		}
 		
-		return $err;
-	}
-
-	/**
-	 * Назначить ресурс подключения к БД
-	 * 
-	 * @param resource $resource
-	 */
-	public static function set_db_conn($resource)
-	{
-		self::$_db_conn = $resource;
-	}
-
-	/**
-	 * Проверка структуры таблицы
-	 */
-	public static function check_struct()
-	{
-		foreach (static::$_field as $f)
+		if (!empty($err))
 		{
-			static::_check_field_one($f);
+			throw new Exception_Many($err);
 		}
 	}
 	
 	/**
-	 * Собираем информацию по таблице
+	 * Проверка на уникальность
+	 * 
+	 * @param array $data
+	 * @param string $primary
+	 * @param boolean $exception
+	 * @return array
 	 */
-	public static function _meta()
+	public static function unique(array $data, string $primary = null, bool $exception = false) : array
 	{
-		/* Опустошаем элементы чтобы не переназначились другим классам */
-		static::$_primary = [];
-		static::$_order = [];
-		static::$_unique = [];
-		static::$_foreign = [];
-		static::$_id = null;
+		/* Собираем данные */
+		static::_meta();
 		
-		$un_num = 0;
+		/* Проверка */
+		if (empty($data))
+		{
+			throw new Exception("Таблица «" . static::$_table . "». Не указаны данные для проверки уникальности.");	
+		}
+		static::check($data, !$exception);
+		$fdata = static::_data_info($data);
+		
+		if (!empty($primary))
+		{
+			static::is($primary);
+		}
+		
+		/* SQL полей */
+		$where = ""; $num = 1;
+		foreach ($fdata as $f)
+		{
+			if ($num > 1)
+			{
+				$where .= " AND\n\t";
+			}
+			
+			$where .= TM_FType::get_sql_where($f, $num);
+			$num++;
+		}
+		
+		/* PRIMARY */
+		if (!empty($primary))
+		{
+			$where .= " AND\n\t" . TM_FType::get_sql_where(static::$_primary, $num, true);
+		}
+
+		/* SQL */
+		$query_data = 
+		[
+			"{table}" => static::$_table,
+			"{where}" => $where
+		];
+		$query = str_replace(array_keys($query_data), array_values($query_data), self::$_sql['unique']);
+		
+		/* Запрос */
+		$values = array_values($data);
+		if (!empty($primary))
+		{
+			$values[] = $primary;
+		}
+		
+		$result = pg_query_params(self::$_db_conn, $query, $values);
+		
+		/* Данные */
+		$count = pg_num_rows($result);
+		pg_free_result($result);
+		if ($count > 0)
+		{
+			/* Текст ошибки */
+			$error = "«" . static::$_name . "» с полем «{$fdata[0]['name']}» : «{$fdata[0]['value']}» уже существует.";
+			if (!$exception)
+			{
+				return [$fdata[0]['identified'] => $error];
+			}
+			else
+			{
+				throw new Exception($error);
+			}
+		}
+		
+		return [];
+	}
+	
+	/**
+	 * Добавить данные
+	 * 
+	 * @param array $data
+	 */
+	public static function insert(array $data) : array
+	{
+		/* Собираем данные */
+		static::_meta();
+		
+		/* Проверка */
+		static::check($data);
+		
+		/* Поля обязательные для заполнения */
 		foreach (static::$_field as $f)
 		{
-			/* ID */
-			if ($f['type'] === "id")
+			if 
+			(
+				!in_array($f['type'], ["text","html","tags","id","order"]) and 
+				!isset($f['default']) and
+				!in_array($f['identified'], array_keys($data))
+			)
 			{
-				static::$_id = $f['identified'];
-				$f['primary'] = true;
+				throw new Exception("«" . static::$_name . "». Отсутствует поле «{$f['identified']}» обязательное для заполнения.");
+			}
+		}
+		
+		/* Уникальность */
+		$err_unique = [];
+		foreach (static::$_unique as $un_field)
+		{
+			$un_data = [];
+			foreach ($un_field as $identified)
+			{
+				$un_data[$identified] = $data[$identified];
 			}
 			
-			/* Primary */
-			if (isset($f['primary']) and $f['primary'] === true)
-			{	
-				if (!empty(static::$_primary))
+			$err_unique = array_merge($err_unique, static::unique($un_data));
+		}
+		if (!empty($err_unique))
+		{
+			throw new Exception_Many($err_unique);
+		}
+		
+		/* SQL */
+		$values_num = []; $num = 1;
+		foreach ($data as $f)
+		{
+			$values_num[] = $num;
+			$num++;
+		}
+		
+		$query_data = 
+		[
+			"{table}" => static::$_table,
+			"{field}" => "\"" . implode("\", \"", array_keys($data)) . "\"",
+			"{values_num}" => "\$" . implode(", \$", $values_num),
+			"{primary}" => static::$_primary['identified']
+		];
+		
+		$query = str_replace(array_keys($query_data), array_values($query_data), self::$_sql['insert']);
+		
+		/* Запрос */
+		$result = pg_query_params(self::$_db_conn, $query, array_values($data));
+		if ($result === false)
+		{
+			throw new Exception("«" . static::$_name . "». Не удалось вставить данные. " . pg_last_error(self::$_db_conn));
+		}
+		
+		$row = pg_fetch_row($result);
+		pg_free_result($result);
+		
+		/* Делаем выборку по первичному ключу и возвращаем результат */
+		return static::get($row[0]);
+	}
+	
+	/**
+	 * Обновить данные по первичному ключу
+	 * 
+	 * @param array $data
+	 * @param string $primary
+	 * @return array
+	 */
+	public static function update(array $data, string $primary) : array
+	{
+		/* Собираем данные */
+		static::_meta();
+		
+		/* Проверка */
+		static::check($data);
+		$old = static::get($primary);
+		
+		/* Уникальность */
+		$err_unique = [];
+		foreach (static::$_unique as $un_field)
+		{
+			/* Входит ли поле в ключ уникальности */
+			if (array_diff($un_field, array_keys($data)) === $un_field)
+			{
+				continue;
+			}
+			
+			/* Данные */
+			$un_data = [];
+			foreach ($un_field as $identified)
+			{
+				if (array_key_exists($identified, $data))
 				{
-					throw new Exception("Таблица «" . static::$_table . "». Два первичных ключа.");
-				}
-				
-				static::$_primary = 
-				[
-					"identified" => $f['identified'],
-					"name" => $f['name'],
-					"type" => $f['type']
-				];
-			}
-			
-			/* Order */
-			if (isset($f['order']))
-			{
-				static::$_order[$f['identified']] = strtolower($f['order']);
-			}
-			
-			/* Unique */
-			if (isset($f['unique']) and $f['unique'] === true)
-			{
-				if (!isset($f['unique_key']))
-				{
-					$unique_key = ["UN_" . $un_num];
-					$un_num++;
+					$un_data[$identified] = $data[$identified];
 				}
 				else
 				{
-					if (is_scalar($f['unique_key']))
-					{
-						$unique_key = [$f['unique_key']];
-					}
-					else
-					{
-						$unique_key = $f['unique_key'];
-					}
-				}
-				
-				foreach ($unique_key as $un)
-				{
-					static::$_unique[$un][] = $f['identified'];
+					$un_data[$identified] = $old[$identified];
 				}
 			}
 			
-			/* Foreign */
-			if (isset($f['foreign']))
-			{
-				static::$_foreign[] = 
-				[
-					"identified" => $f['identified'],
-					"key" => "FK_" . $f['identified'],
-					"table" => $f['foreign'][0],
-					"field" => $f['foreign'][1]
-				];
-			}
+			/* Проверяем на уникальность */
+			$err_unique = array_merge($err_unique, static::unique($un_data, $primary));
 		}
 		
-		/* Ещё проверки */
-		if (empty(static::$_primary))
+		if (!empty($err_unique))
 		{
-			throw new Exception("Таблица «" . static::$_table . "». Не задан первичный ключ.");
+			throw new Exception_Many($err_unique);
 		}
+		
+		/* SQL */
+		$fdata = static::_data_info($data);
+
+		$field = ""; $num = 1;
+		foreach ($fdata as $key => $f)
+		{
+			if ($key !== 0)
+			{
+				$field .= ",\n";
+			}
+			
+			$field .= "\t\"{$f['identified']}\" = \${$num}";
+			$num++;
+		}
+		
+		$query_data = 
+		[
+			"{table}" => static::$_table,
+			"{field}" => $field,
+			"{primary}" => static::$_primary['identified'],
+			"{num}" => $num
+		];
+		
+		$query = str_replace(array_keys($query_data), array_values($query_data), self::$_sql['update']);
+		
+		/* Запрос */
+		$values = array_values($data);
+		$values[] = $primary;
+		
+		$result = pg_query_params(self::$_db_conn, $query, $values);
+		if ($result === false)
+		{
+			throw new Exception("«" . static::$_name . "». Не удалось обновить данные. " . pg_last_error(self::$_db_conn));
+		}
+		pg_free_result($result);
+		
+		/* Делаем выборку по первичному ключу и возвращаем результат */
+		return static::get($primary);
 	}
-	
+
+	/**
+	 * Удалить
+	 * 
+	 * @param string $primary
+	 * @return array
+	 */
+	public static function delete(string $primary) : array
+	{
+		/* Собираем данные */
+		static::_meta();
+		
+		/* Старые данные */
+		$old = self::get($primary);
+		
+		/* SQL */
+		$query_data = 
+		[
+			"{table}" => static::$_table,
+			"{primary}" => static::$_primary['identified']
+		];
+		$query = str_replace(array_keys($query_data), array_values($query_data), self::$_sql['delete']);
+		
+		/* Запрос */
+		$result = pg_query_params(self::$_db_conn, $query, [$primary]);
+		if ($result === false)
+		{
+			throw new Exception("«" . static::$_name . "». Не удалось удалить данные. " . pg_last_error(self::$_db_conn));
+		}
+		pg_free_result($result);
+		
+		/* Возвращаем старые значения */
+		return $old;
+	}
+
 	/**
 	 * Получить SQL для создания таблицы
 	 * 
 	 * @param boolean $drop_if_exist
-	 * @return string
+	 * @return boolean
 	 */
-	public static function _sql_create(bool $drop_if_exist = true) : string
+	public static function create(bool $drop_if_exist = true) : bool
 	{
+		/* Собираем данные */
+		static::_meta();
+		
 		/* Удалить таблицу при наличии */
 		if ($drop_if_exist)
 		{
@@ -713,23 +941,60 @@ SQL;
 		if (!empty(static::$_primary))
 		{
 			$pk_field = '"' . static::$_primary['identified'] . '"';
-			$primary = str_replace(['{table}', '{pk_field}'], [static::$_table, $pk_field], self::$_sql['primary']);
+			$primary = str_replace(['{table}', '{pk_field}'], [static::$_table, $pk_field], self::$_sql['constraint_primary']);
 		}
 		
 		/* UNIQUE */
 		$unique = "";
 		if (!empty(static::$_unique))
 		{
-			foreach (static::$_unique as $key => $un_val)
+			$num = 1;
+			foreach (static::$_unique as $key => $field_un)
 			{
-				$un_field = '"' . implode('","', $un_val) . '"';
-				$data = 
-				[
-					"{table}" => static::$_table,
-					"{key}" => $key,
-					"{un_field}" => $un_field
-				];
-				$unique .= str_replace(array_keys($data), array_values($data), self::$_sql['unique']);
+				$field_un = static::_data_info($field_un);
+								
+				/* NULL полей нет */
+				if (array_search(true, array_column($field_un, "null")) === false or count($field_un) === 1)
+				{
+					$data = 
+					[
+						"{table}" => static::$_table,
+						"{key}" => "UN" . $num,
+						"{field}" => "\"" . implode("\", \"", array_column($field_un, "identified")) . "\""
+					];
+					
+					$unique .= str_replace(array_keys($data), array_values($data), self::$_sql['index_unique']);
+				}
+				/* Есть NULL поля */
+				else
+				{
+					/* Идентификаторы полей с NULL */
+					foreach ($field_un as $f)
+					{
+						if (isset($f['null']) and $f['null'] === true)
+						{
+							/* Все поля кроме текушего */
+							$field_all_but = array_column($field_un, "identified");
+							$key = array_search($f['identified'], $field_all_but);
+							unset($field_all_but[$key]);
+							
+							
+							$data = 
+							[
+								"{table}" => static::$_table,
+								"{key}" => "UN" . $num,
+								"{field}" => $f['identified'],
+								"{field_all}" => "\"" . implode("\", \"", array_column($field_un, "identified")) . "\"",
+								"{field_all_but}" => "\"" . implode("\", \"", $field_all_but) . "\"",
+							];
+							
+							$unique .= str_replace(array_keys($data), array_values($data), self::$_sql['index_unique_null']);
+						}
+					}
+					
+				}
+				
+				$num++;
 			}
 		}
 		
@@ -748,7 +1013,7 @@ SQL;
 					"{fk_field}" => $v['field']
 				];
 				
-				$foreign .= str_replace(array_keys($data), array_values($data), self::$_sql['foreign']);
+				$foreign .= str_replace(array_keys($data), array_values($data), self::$_sql['constraint_foreign']);
 			}
 		}
 		
@@ -791,9 +1056,199 @@ SQL;
 			"{comment_column}" => $comment_column
 		];
 		
-		$sql = str_replace(array_keys($data), array_values($data), self::$_sql['create']);
+		$query = str_replace(array_keys($data), array_values($data), self::$_sql['create']);
 		
-		return $sql;
+		/* Запрос */
+		$result = pg_query(self::$_db_conn, $query);
+		if ($result === false)
+		{
+			return false;
+		}
+		
+		pg_free_result($result);
+		
+		return true;
+	}
+	
+	/**
+	 * Назначить ресурс подключения к БД
+	 * 
+	 * @param resource $resource
+	 */
+	public static function set_db_conn($resource)
+	{
+		self::$_db_conn = $resource;
+	}
+
+	/**
+	 * Проверка структуры таблицы
+	 */
+	public static function check_struct()
+	{
+		foreach (static::$_field as $f)
+		{
+			static::_check_field_one($f);
+		}
+	}
+	
+	/**
+	 * Получить сведения по полям на основании данных
+	 * 
+	 * @param array $data
+	 * @return array
+	 */
+	protected static function _data_info(array $data) : array
+	{
+		$fdata = [];
+		
+		/* Массив-список - список идентификаторов */
+		if ($data === array_values($data))
+		{
+			foreach ($data as $identified)
+			{
+				$isset = false;
+				foreach (static::$_field as $f)
+				{
+					if ($identified === $f['identified'])
+					{
+						$fdata[] = $f;
+						$isset = true;
+						break;
+					}
+				}
+
+				if ($isset === false)
+				{
+					throw new Exception("«" . static::$_name . "». Поля с идентификатором «{$identified}» не существует.");
+				}
+			}
+		}
+		/* Ассоциативный массив */
+		else
+		{
+			foreach ($data as $identified => $value)
+			{
+				$isset = false;
+				foreach (static::$_field as $f)
+				{
+					if ($identified === $f['identified'])
+					{
+						$f = array_merge($f, ["value" => $value]);
+						$fdata[] = $f;
+						$isset = true;
+						break;
+					}
+				}
+
+				if ($isset === false)
+				{
+					throw new Exception("«" . static::$_name . "». Поля с идентификатором «{$identified}» не существует.");
+				}
+			}
+		}
+		
+		return $fdata;
+	}
+
+	/**
+	 * Собираем информацию по таблице
+	 */
+	public static function _meta() : bool
+	{
+		/* Не собирать повторно */
+		if (self::$_meta_table === static::$_table)
+		{
+			return true;
+		}
+		
+		/* Опустошаем элементы чтобы не переназначились другим классам */
+		static::$_primary = [];
+		static::$_order = [];
+		static::$_unique = [];
+		static::$_foreign = [];
+		static::$_id = null;
+		
+		$un_num = 0;
+		foreach (static::$_field as $f)
+		{
+			/* ID */
+			if ($f['type'] === "id")
+			{
+				static::$_id = $f['identified'];
+				$f['primary'] = true;
+			}
+			
+			/* Primary */
+			if (isset($f['primary']) and $f['primary'] === true)
+			{	
+				if (!empty(static::$_primary))
+				{
+					throw new Exception("Таблица «" . static::$_table . "». Два первичных ключа.");
+				}
+				
+				static::$_primary = 
+				[
+					"identified" => $f['identified'],
+					"name" => $f['name'],
+					"type" => $f['type']
+				];
+			}
+			
+			/* Order */
+			if (isset($f['order']))
+			{
+				static::$_order[$f['identified']] = strtolower($f['order']);
+			}
+			
+			/* Unique */
+			if (isset($f['unique']) and $f['unique'] === true)
+			{
+				if (!isset($f['unique_key']))
+				{
+					$unique_key = ["UN_" . $un_num];
+					$un_num++;
+				}
+				else
+				{
+					if (is_scalar($f['unique_key']))
+					{
+						$unique_key = [$f['unique_key']];
+					}
+					else
+					{
+						$unique_key = $f['unique_key'];
+					}
+				}
+				
+				foreach ($unique_key as $un)
+				{
+					static::$_unique[$un][] = $f['identified'];
+				}
+			}
+			
+			/* Foreign */
+			if (isset($f['foreign']))
+			{
+				static::$_foreign[] = 
+				[
+					"identified" => $f['identified'],
+					"key" => "FK_" . $f['identified'],
+					"table" => $f['foreign'][0],
+					"field" => $f['foreign'][1]
+				];
+			}
+		}
+		
+		/* Ещё проверки */
+		if (empty(static::$_primary))
+		{
+			throw new Exception("Таблица «" . static::$_table . "». Не задан первичный ключ.");
+		}
+		
+		/* Укажим таблицу */
+		self::$_meta_table = static::$_table;
+		
+		return true;
 	}
 	
 	/**
@@ -925,6 +1380,37 @@ SQL;
 				throw new Exception("Поле «{$table}.{$f['identified']}». Foreign задан неверно. Идентификатор поля задан неверно. " . TM_FType::get_last_error());
 			}
 		}
+	}
+}
+
+/**
+ * Исключение включающее список ошибок
+ */
+class Exception_Many extends Exception
+{
+	/**
+	 * Список 
+	 * 
+	 * @var array
+	 */
+	private $_err = [];
+
+	/**
+	 * Конструктор
+	 */
+	public function __construct(array $err)
+	{
+		$this->_err = $err;
+		
+		parent::__construct(null);
+	}
+	
+	/**
+	 * Получить список ошибок
+	 */
+	public function get_err()
+	{
+		return $this->_err;
 	}
 }
 ?>

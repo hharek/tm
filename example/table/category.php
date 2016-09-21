@@ -35,7 +35,7 @@ class Category extends TM
 			"name" => "Наименование",
 			"type" => "string",
 			"unique" => true,
-			"unique_key" => "UN_Name"
+			"unique_key" => "UN_Name",
 		],
 		[
 			"identified" => "Url",

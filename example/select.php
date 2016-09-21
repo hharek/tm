@@ -9,16 +9,35 @@ require "table/tovar.php";
 require "table/group.php";
 require "table/user.php";
 
-TM::set_db_conn(pg_connect("host=127.0.0.1 port=5432 dbname=odin user=odin password=111"));
-
+$db = pg_connect("host=127.0.0.1 port=5432 dbname=example user=example password=pass");
+TM::set_db_conn($db);
 
 try
 {
-	var_dump(Category::is(1, false));
-	print_r(Category::get(1));
-	print_r(Category::select());
-	print_r(Category::select(["Name" => "Категория 1"]));
-	print_r(Category::select([], ["ID", "Name"]));	
+	/* Выборка по первичному ключу */
+	$category = Category::get(3);
+	print_r($category);
+	
+	/* Все категории */
+	$category_all = Category::select();
+	print_r($category_all);
+	
+	/* Корневые категории */
+	$category_parent = Category::select(["Parent" => null]);
+	print_r($category_parent);
+	
+	/* Имена всех подчитённых категорий с 1 */
+	$category_child_by_1_names = Category::select(["Parent" => 1], ["Name"]);
+	print_r($category_child_by_1_names);
+	
+	/* Вторая страница категорий, отсортированная по имени */
+	$category_by_page_2 = Category::select([], [], 2, 10, ["Name" => "asc"]);
+	print_r($category_by_page_2);
+	
+}
+catch (Exception_Many $e)
+{
+	print_r($e->get_err());
 }
 catch (Exception $e)
 {

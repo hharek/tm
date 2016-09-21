@@ -38,13 +38,13 @@ class TM_FType
 		"id",
 		"order"
 	];
-
+	
 	/**
-	 * SQL по запросу CREATE по каждому типу
+	 * SQL тип по каждому типу
 	 * 
 	 * @var array
 	 */
-	private static $_sql_create = 
+	private static $_sql = 
 	[
 		"identified" => "varchar(255)",
 		"string" => "varchar(255)",
@@ -67,6 +67,25 @@ class TM_FType
 		"order" => "int"
 	];
 	
+	/**
+	 * Типы для которых для равенства использовать оператор ILIKE
+	 * 
+	 * @var array
+	 */
+	private static $_type_ilike = 
+	[
+		"identified", 
+		"string", 
+		"text", 
+		"html", 
+		"email", 
+		"url_part", 
+		"url_path", 
+		"url", 
+		"tags", 
+		"path"
+	];
+
 	/**
 	 * Проверка поля
 	 * 
@@ -148,7 +167,7 @@ class TM_FType
 			throw new Exception("Указанный тип «{$type}» отсутствует.");
 		}
 		
-		return self::$_sql_create[$type];
+		return self::$_sql[$type];
 	}
 	
 	/**
@@ -159,20 +178,6 @@ class TM_FType
 	 */
 	public static function get_sql_select(array $field) : string
 	{
-		/* INT и NULL */
-		if 
-		(
-			($field['type'] === "int" or $field['type'] === "uint") and
-			(isset($field['null']) and $field['null'] === true)
-		)
-		{
-			$sql = 
-<<<SQL
-COALESCE ("{$field['identified']}", 0) as "{$field['identified']}"
-SQL;
-			return $sql;
-		}
-
 		/* Добавляем */
 		$sql = "\"" . $field['identified'] . "\"";
 
@@ -183,6 +188,64 @@ SQL;
 		}
 		
 		return $sql;
+	}
+	
+	/**
+	 * Получить SQL для запроса на уникальность в блоке WHERE
+	 * 
+	 * @param array $field
+	 * @param int $num
+	 * @return string
+	 */
+	public static function get_sql_where(array $field, int $num = 1, bool $not = false) : string
+	{
+		/* Оператор равенства */
+		$equal = "=";
+		if ($not)
+		{
+			$equal = "!=";
+		}
+		
+		if (in_array($field['type'], self::$_type_ilike))
+		{
+			if (!$not)
+			{
+				$equal = "ILIKE";
+			}
+			else
+			{
+				$equal = "NOT ILIKE";
+			}
+		}
+		
+		/* NOT NULL */
+		if (!isset($field['null']) or $field['null'] === false)
+		{
+			$sql = "\"{$field['identified']}\" {$equal} \${$num}";
+		}
+		/* NULL */
+		else
+		{
+			$type = self::$_sql[$field['type']];
+			
+			$sql = 
+<<<SQL
+(
+		(
+			\${$num}::{$type} IS NULL AND
+			"{$field['identified']}" IS NULL
+		) OR
+		(
+			\${$num}::{$type} IS NOT NULL AND
+			"{$field['identified']}" = \${$num}
+		)
+	)
+SQL;
+		}
+		
+		return $sql;
+		
+		
 	}
 
 	/**
