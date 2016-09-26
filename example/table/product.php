@@ -1,23 +1,23 @@
 <?php
 /**
- * Категория
+ * Товар
  */
-class Category extends TM
+class Product extends TM
 {
 	/**
 	 * Таблица
 	 * 
 	 * @var string
 	 */
-	protected static $_table = "category";
+	protected static $_table = "product";
 	
 	/**
-	 * Наименование
+	 * Товар
 	 * 
 	 * @var string
 	 */
-	protected static $_name = "Категория";
-
+	protected static $_name = "Товар";
+	
 	/**
 	 * Поля
 	 * 
@@ -35,7 +35,7 @@ class Category extends TM
 			"name" => "Наименование",
 			"type" => "string",
 			"unique" => true,
-			"unique_key" => "UN_Name",
+			"unique_key" => "UN_Name"
 		],
 		[
 			"identified" => "Url",
@@ -45,24 +45,29 @@ class Category extends TM
 			"unique_key" => "UN_Url"
 		],
 		[
-			"identified" => "Order",
-			"name" => "Сортировка",
-			"type" => "order",
-			"order" => "asc"
+			"identified" => "Content",
+			"name" => "Содержание",
+			"type" => "html",
+			"null" => true
 		],
 		[
-			"identified" => "Parent",
-			"name" => "Корень",
+			"identified" => "Category_ID",
+			"name" => "Привязка к категории",
 			"type" => "int",
-			"null" => true,
-			"unique" => true,
-			"unique_key" => ["UN_Name", "UN_Url"],
 			"foreign" => 
 			[
 				"table" => "category",
 				"field" => "ID",
 				"class" => "Category"
-			]
+			],
+			"unique" => true,
+			"unique_key" => ["UN_Name", "UN_Url"]
+		],
+		[
+			"identified" => "Active",
+			"name" => "Активность",
+			"type" => "boolean",
+			"default" => true
 		]
 	];
 }

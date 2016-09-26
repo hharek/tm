@@ -14,18 +14,27 @@ TM::set_db_conn($db);
 
 try
 {
-	/* Проверяем правильность проверки заполнения класса Category */
+	/* Проверяем правильность проверки заполнения класса Category и Product */
 	Category::check_struct();
+	Product::check_struct();
 	
 	/* Создаём таблицу */
 	Category::create();
+	Product::create();
 	
-	/* INSERT */
+	/* INSERT category */
 	$c1 = Category::insert(["Name" => "Категория 1", "Url" => "категория-1", "Parent" => null]);
 	$c2 = Category::insert(["Name" => "Категория 2", "Url" => "категория-2", "Parent" => null]);
 	$c3 = Category::insert(["Name" => "Категория 3", "Url" => "категория-3", "Parent" => null]);
 	$c4 = Category::insert(["Name" => "Категория 4", "Url" => "категория-4", "Parent" => 1]);
 	$c5 = Category::insert(["Name" => "Категория 5", "Url" => "категория-5", "Parent" => 1]);
+	
+	/* INSERT tovar */
+	$t1 = Product::insert(["Name" => "Товар 1", "Url" => "товар-1", "Content" => "Описание 1", "Category_ID" => $c1['ID']]);
+	$t2 = Product::insert(["Name" => "Товар 2", "Url" => "товар-2", "Content" => "Описание 2", "Category_ID" => $c1['ID']]);
+	$t3 = Product::insert(["Name" => "Товар 3", "Url" => "товар-3", "Content" => "Описание 3", "Category_ID" => $c1['ID']]);
+	$t4 = Product::insert(["Name" => "Товар 4", "Url" => "товар-4", "Content" => "Описание 4", "Category_ID" => $c2['ID'], "Active" => 0]);
+	$t5 = Product::insert(["Name" => "Товар 5", "Url" => "товар-5", "Content" => "Описание 5", "Category_ID" => $c2['ID'], "Active" => 0]);
 	
 	/* UPDATE */
 	$c2_new = Category::update(["Name" => "Новая категория"], $c2['ID']);
@@ -42,7 +51,6 @@ try
 	
 	/* Выборка */
 	print_r(Category::select(["Parent" => null]));	/* Выборка корневых категорий */
-	
 }
 catch (Exception_Many $e)
 {

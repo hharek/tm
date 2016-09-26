@@ -56,7 +56,7 @@ class TM_FType
 		"email" => "varchar(127)",
 		"price" => "numeric(10,2)",
 		"date" => "date",
-		"datetime" => "datetime",
+		"datetime" => "timestamp",
 		"url_part" => "varchar(255)",
 		"url_path" => "varchar(255)",
 		"url" => "varchar(255)",
@@ -237,7 +237,7 @@ class TM_FType
 		) OR
 		(
 			\${$num}::{$type} IS NOT NULL AND
-			"{$field['identified']}" = \${$num}
+			"{$field['identified']}" {$equal} \${$num}
 		)
 	)
 SQL;

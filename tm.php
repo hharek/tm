@@ -120,7 +120,6 @@ SQL
 ,\n\tCONSTRAINT "{table}_PK" PRIMARY KEY ({pk_field})
 SQL
 ,
-		
 		"constraint_foreign" =>
 <<<SQL
 ,\n\tCONSTRAINT "{table}_{key}" FOREIGN KEY ("{identified}")
@@ -520,8 +519,17 @@ SQL;
 					throw new Exception($error);
 				}
 			}
-			$f['value'] = (string)$f['value'];
-
+			
+			/* Преобразуем в строку */
+			if ($f['value'] === true or $f['value'] === false) 
+			{
+				$f['value'] = (string)(int)$f['value'];
+			}
+			else
+			{
+				$f['value'] = (string)$f['value'];
+			}
+			
 			/* Не заполнено */
 			if (!isset($f['default']) and trim($f['value']) === "")
 			{
@@ -668,6 +676,29 @@ SQL;
 			}
 		}
 		
+		/* Внешние ключи */
+		foreach (static::$_foreign as $fk_field)
+		{
+			if (array_key_exists("class", $fk_field))
+			{
+				/* Определяем значение внешнего ключа и делаем проверку по первичному ключу */
+				foreach ($data as $identified => $value)
+				{
+					if ($identified === $fk_field['identified'])
+					{
+						if ($value === null)
+						{
+							break;
+						}
+						
+						call_user_func([$fk_field['class'], "is"], $value);
+						static::_meta();
+						break;
+					}
+				}
+			}
+		}
+		
 		/* Уникальность */
 		$err_unique = [];
 		foreach (static::$_unique as $un_field)
@@ -732,6 +763,35 @@ SQL;
 		/* Проверка */
 		static::check($data);
 		$old = static::get($primary);
+		
+		/* Внешние ключи */
+		foreach (static::$_foreign as $fk_field)
+		{
+			/* Входит ли поле во внешний ключ */
+			if (array_diff($fk_field, array_keys($data)) === $fk_field)
+			{
+				continue;
+			}
+			
+			/* Если присутствует класс делаем проверку */
+			if (array_key_exists("class", $fk_field))
+			{
+				/* Определяем значение внешнего ключа и делаем проверку по первичному ключу */
+				foreach ($data as $identified => $value)
+				{
+					if ($identified === $fk_field['identified'])
+					{
+						if ($value === null)
+						{
+							break;
+						}
+						
+						call_user_func([$fk_field['class'], "is"], $value);
+						break;
+					}
+				}
+			}
+		}
 		
 		/* Уникальность */
 		$err_unique = [];
@@ -1087,10 +1147,179 @@ SQL;
 	{
 		foreach (static::$_field as $f)
 		{
-			static::_check_field_one($f);
+			/* Идентификатор */
+			if (empty($f['identified']))
+			{
+				throw new Exception("Таблица «" . static::$_table . "». Не указан идентификатор у поля.");
+			}
+
+			if (!TM_FType::check("identified", $f['identified']))
+			{
+				throw new Exception("Поле «" . static::$_table . ".{$f['identified']}». Идентификатор задан неверно. " . TM_FType::get_last_error());
+			}
+
+			/* Наименование поля */
+			if (empty($f['name']))
+			{
+				throw new Exception("Поле «" . static::$_table . ".{$f['identified']}». Наименование не задано.");
+			}
+
+			if (!TM_FType::check("string", $f['name']))
+			{
+				throw new Exception("Поле «" . static::$_table . ".{$f['identified']}». Наименование задано неверно. " . TM_FType::get_last_error());
+			}
+
+			/* Тип */
+			if (empty($f['type']))
+			{
+				throw new Exception("Поле «" . static::$_table . ".{$f['identified']}». Не указан тип.");
+			}
+			if (!TM_FType::is($f['type']))
+			{
+				throw new Exception("Поле «" . static::$_table . ".{$f['identified']}». Отсутствует тип столбца «{$f['type']}».");
+			}
+
+			/* NULL */
+			if (isset($f['null']) and $f['null'] !== true and $f['null'] !== false)
+			{	
+				throw new Exception("Поле «" . static::$_table . ".{$f['identified']}». NULL задан неверно. Необходимо указать «true» или «false».");
+			}
+
+			/* DEFAULT */
+			if (array_key_exists("default", $f))
+			{
+				if (is_bool($f['default']))
+				{
+					$f['default'] = (string)(int)$f['default'];
+				}
+
+				if (!is_null($f['default']) and !TM_FType::check($f['type'], $f['default']))
+				{
+					throw new Exception("Поле «" . static::$_table . ".{$f['identified']}». DEFAULT задан неверно. Не соответствие типу. " . TM_FType::get_last_error());
+				}
+
+				if (is_null($f['default']) and isset($f['null']) and $f['null'] === false)
+				{
+					throw new Exception("Поле «" . static::$_table . ".{$f['identified']}». DEFAULT не может быть NULL, т.к. столбец NOT NULL.");
+				}
+			}
+
+			/* PRIMARY */
+			if (isset($f['primary']) and $f['primary'] !== true and $f['primary'] !== false)
+			{
+				throw new Exception("Поле «" . static::$_table . ".{$f['identified']}». PRIMARY задан неверно. Необходиом указать «true» или «false».");
+			}
+
+			/* ORDER */
+			if (isset($f['order']))
+			{
+				if (!is_string($f['order']))
+				{
+					throw new Exception("Поле «" . static::$_table . ".{$f['identified']}». ORDER задан неверно. Необходимо указать «asc» или «desc».");
+				}
+
+				$f['order'] = strtolower($f['order']);
+
+				if ($f['order'] !== "asc" and $f['order'] !== "desc")
+				{
+					throw new Exception("Поле «" . static::$_table . ".{$f['identified']}». ORDER задан неверно. Необходимо указать «asc» или «desc».");
+				}
+			}
+
+			/* UNIQUE */
+			if (isset($f['unique']) and $f['unique'] !== true and $f['unique'] !== false)
+			{
+				throw new Exception("Поле «" . static::$_table . ".{$f['identified']}». UNIQUE задан неверно. Необходиом указать «true» или «false».");
+			}
+
+			if (isset($f['unique']) and $f['unique'] === true)
+			{
+				if (isset($f['unique_key']))
+				{
+					if (is_scalar($f['unique_key']))
+					{
+						$f['unique_key'] = (array)$f['unique_key'];
+					}
+
+					foreach ($f['unique_key'] as $un)
+					{
+						if (!TM_FType::check("identified", $un))
+						{
+							throw new Exception("Поле «" . static::$_table . ".{$f['identified']}». UNIQUE KEY задан неверно. " . TM_FType::get_last_error());
+						}
+					}
+				}
+			}
+
+			/* FOREIGN */
+			if (!empty($f['foreign']))
+			{
+				$foreign = $f['foreign'];
+				if (empty($foreign['table']) or empty($foreign['field']))
+				{
+					throw new Exception("Поле «" . static::$_table . ".{$f['identified']}». Foreign задан неверно. Не указан параметр «table» или «field».");
+				}
+				
+				if (!TM_FType::check("identified", $foreign['table']))
+				{
+					throw new Exception("Поле «" . static::$_table . ".{$f['identified']}». Foreign задан неверно. Параметр «table» задан неверно. " . TM_FType::get_last_error());
+				}
+				
+				if (!TM_FType::check("identified", $foreign['field']))
+				{
+					throw new Exception("Поле «" . static::$_table . ".{$f['identified']}». Foreign задан неверно. Параметр «field» задан неверно. " . TM_FType::get_last_error());
+				}
+				
+				if (array_key_exists("key", $foreign) and !TM_FType::check("identified", $foreign['key']))
+				{
+					throw new Exception("Поле «" . static::$_table . ".{$f['identified']}». Foreign задан неверно. Параметр «key» задан неверно. " . TM_FType::get_last_error());
+				}
+				
+				if (array_key_exists("class", $foreign))
+				{
+					if (!TM_FType::check("identified", $foreign['class']))
+					{
+						throw new Exception("Поле «" . static::$_table . ".{$f['identified']}». Foreign задан неверно. Параметр «class» задан неверно. " . TM_FType::get_last_error());
+					}
+					
+					if (!class_exists($foreign['class']))
+					{
+						throw new Exception("Поле «" . static::$_table . ".{$f['identified']}». Foreign задан неверно. Класс «{$foreign['class']}» отсутствует.");
+					}
+					
+					/* Только поле - первичный ключ может быть внешним ключом */
+					$foreign_field = call_user_func([$foreign['class'], "get_field"]);
+					
+					if (!in_array($foreign['field'], array_column($foreign_field, "identified")))
+					{
+						throw new Exception("Поле «" . static::$_table . ".{$f['identified']}». Foreign задан неверно. Поле «{$foreign['table']}.{$foreign['field']}» отсутствует.");
+					}
+					
+					foreach ($foreign_field as $ff)
+					{
+						if ($ff['identified'] === $foreign['field'])
+						{
+							if (!array_key_exists("primary", $ff) and $ff['type'] !== "id")
+							{
+								throw new Exception("Поле «" . static::$_table . ".{$f['identified']}». Foreign задан неверно. Поле «{$foreign['table']}.{$foreign['field']}» не является первичным ключом.");
+							}
+							
+							break;
+						}
+					}
+				}	
+			}
 		}
 	}
 	
+	/**
+	 * Вернуть все поля
+	 */
+	public static function get_field() : array
+	{
+		return static::$_field;
+	}
+
 	/**
 	 * Получить сведения по полям на основании данных
 	 * 
@@ -1153,7 +1382,7 @@ SQL;
 	/**
 	 * Собираем информацию по таблице
 	 */
-	public static function _meta() : bool
+	protected static function _meta() : bool
 	{
 		/* Не собирать повторно */
 		if (self::$_meta_table === static::$_table)
@@ -1227,15 +1456,16 @@ SQL;
 			}
 			
 			/* Foreign */
-			if (isset($f['foreign']))
+			if (array_key_exists("foreign", $f))
 			{
-				static::$_foreign[] = 
-				[
-					"identified" => $f['identified'],
-					"key" => "FK_" . $f['identified'],
-					"table" => $f['foreign'][0],
-					"field" => $f['foreign'][1]
-				];
+				if (empty($f['foreign']['key']))
+				{
+					$f['foreign']['key'] = static::$_table . "_FK_" . $f['identified'];
+				}
+				
+				$f['foreign']['identified'] = $f['identified'];
+				
+				static::$_foreign[] =  $f['foreign'];
 			}
 		}
 		
@@ -1249,137 +1479,6 @@ SQL;
 		self::$_meta_table = static::$_table;
 		
 		return true;
-	}
-	
-	/**
-	 * Проверка одного поля
-	 */
-	protected static function _check_field_one($f)
-	{
-		$table = static::$_table;
-		
-		/* Идентификатор */
-		if (empty($f['identified']))
-		{
-			throw new Exception("Таблица «{$table}». Не указан идентификатор у поля.");
-		}
-	
-		if (!TM_FType::check("identified", $f['identified']))
-		{
-			throw new Exception("Поле «{$table}.{$f['identified']}». Идентификатор задан неверно. " . TM_FType::get_last_error());
-		}
-		
-		/* Наименование поля */
-		if (empty($f['name']))
-		{
-			throw new Exception("Поле «{$table}.{$f['identified']}». Наименование не задано.");
-		}
-		
-		if (!TM_FType::check("string", $f['name']))
-		{
-			throw new Exception("Поле «{$table}.{$f['identified']}». Наименование задано неверно. " . TM_FType::get_last_error());
-		}
-
-		/* Тип */
-		if (empty($f['type']))
-		{
-			throw new Exception("Поле «{$table}.{$f['identified']}». Не указан тип.");
-		}
-		if (!TM_FType::is($f['type']))
-		{
-			throw new Exception("Поле «{$table}.{$f['identified']}». Отсутствует тип столбца «{$f['type']}».");
-		}
-		
-		/* NULL */
-		if (isset($f['null']) and $f['null'] !== true and $f['null'] !== false)
-		{	
-			throw new Exception("Поле «{$table}.{$f['identified']}». NULL задан неверно. Необходимо указать «true» или «false».");
-		}
-		
-		/* DEFAULT */
-		if (array_key_exists("default", $f))
-		{
-			if (is_bool($f['default']))
-			{
-				$f['default'] = (string)(int)$f['default'];
-			}
-			
-			if (!is_null($f['default']) and !TM_FType::check($f['type'], $f['default']))
-			{
-				throw new Exception("Поле «{$table}.{$f['identified']}». DEFAULT задан неверно. Не соответствие типу. " . TM_FType::get_last_error());
-			}
-			
-			if (is_null($f['default']) and isset($f['null']) and $f['null'] === false)
-			{
-				throw new Exception("Поле «{$table}.{$f['identified']}». DEFAULT не может быть NULL, т.к. столбец NOT NULL.");
-			}
-		}
-		
-		/* PRIMARY */
-		if (isset($f['primary']) and $f['primary'] !== true and $f['primary'] !== false)
-		{
-			throw new Exception("Поле «{$table}.{$f['identified']}». PRIMARY задан неверно. Необходиом указать «true» или «false».");
-		}
-		
-		/* ORDER */
-		if (isset($f['order']))
-		{
-			if (!is_string($f['order']))
-			{
-				throw new Exception("Поле «{$table}.{$f['identified']}». ORDER задан неверно. Необходимо указать «asc» или «desc».");
-			}
-			
-			$f['order'] = strtolower($f['order']);
-			
-			if ($f['order'] !== "asc" and $f['order'] !== "desc")
-			{
-				throw new Exception("Поле «{$table}.{$f['identified']}». ORDER задан неверно. Необходимо указать «asc» или «desc».");
-			}
-		}
-		
-		/* UNIQUE */
-		if (isset($f['unique']) and $f['unique'] !== true and $f['unique'] !== false)
-		{
-			throw new Exception("Поле «{$table}.{$f['identified']}». UNIQUE задан неверно. Необходиом указать «true» или «false».");
-		}
-		
-		if (isset($f['unique']) and $f['unique'] === true)
-		{
-			if (isset($f['unique_key']))
-			{
-				if (is_scalar($f['unique_key']))
-				{
-					$f['unique_key'] = (array)$f['unique_key'];
-				}
-			
-				foreach ($f['unique_key'] as $un)
-				{
-					if (!TM_FType::check("identified", $un))
-					{
-						throw new Exception("Поле «{$table}.{$f['identified']}». UNIQUE KEY задан неверно. " . TM_FType::get_last_error());
-					}
-				}
-			}
-		}
-		
-		/* FOREIGN */
-		if (!empty($f['foreign']))
-		{
-			if (!is_array($f['foreign']) or (array_values($f['foreign']) !== $f['foreign']) or count($f['foreign']) !== 2)
-			{
-				throw new Exception("Поле «{$table}.{$f['identified']}». Foreign задан неверно. Указать нужно массив к примеру «['table','ID']»");
-			}
-			
-			if (!TM_FType::check("identified", $f['foreign'][0]))
-			{
-				throw new Exception("Поле «{$table}.{$f['identified']}». Foreign задан неверно. Идентификатор таблицы задан неверно. " . TM_FType::get_last_error());
-			}
-			
-			if (!TM_FType::check("identified", $f['foreign'][1]))
-			{
-				throw new Exception("Поле «{$table}.{$f['identified']}». Foreign задан неверно. Идентификатор поля задан неверно. " . TM_FType::get_last_error());
-			}
-		}
 	}
 }
 
