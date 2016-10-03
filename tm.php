@@ -19,14 +19,14 @@ class TM
 	protected static $_schema = "public";
 
 	/**
-	 * Таблица
+	 * Наименование таблицы
 	 * 
 	 * @var string
 	 */
 	protected static $_table;
 	
 	/**
-	 * Наименование
+	 * Наименование сущности
 	 * 
 	 * @var string
 	 */
@@ -40,40 +40,47 @@ class TM
 	protected static $_field = [];
 	
 	/**
-	 * Поле с первичным ключом
+	 * Первичные ключи таблиц
 	 * 
 	 * @var array
 	 */
 	protected static $_primary = [];
 	
 	/**
-	 * Поля сортировки
+	 * Поля сортировки таблиц
 	 * 
 	 * @var array
 	 */
 	protected static $_order = [];
 	
 	/**
-	 * Массив уникальных ключей
+	 * Уникальные ключи таблиц
 	 * 
 	 * @var array
 	 */
 	protected static $_unique = [];
 	
 	/**
-	 * Массив внешних ключей
+	 * Внешние ключи таблиц
 	 * 
 	 * @var array
 	 */
 	protected static $_foreign = [];
 	
 	/**
-	 * Идентификатор поля с типом ID
+	 * Список счётчиков, привязанных к таблице
 	 * 
-	 * @var string
+	 * @var array
 	 */
-	protected static $_id;
+	protected static $_seq = [];
 	
+	/**
+	 * Другие ограничения
+	 * 
+	 * @var array
+	 */
+	protected static $_sql_constraint = [];
+
 	/**
 	 * Шаблоны SQL
 	 * 
@@ -87,7 +94,7 @@ class TM
 {sequence_create}
 CREATE TABLE "{table}"
 (
-{field}{primary}{foreign}
+{field}{primary}{foreign}{constraint}
 );\n
 {sequence_owned}
 {unique}
@@ -102,28 +109,23 @@ SQL
 ,
 		"sequence_create" => 
 <<<SQL
-CREATE SEQUENCE "{table}_seq" RESTART;\n
+CREATE SEQUENCE "{identified}" RESTART;\n
 SQL
 ,		
 		"sequence_owned" => 
 <<<SQL
-ALTER SEQUENCE "{table}_seq" OWNED BY "{table}"."{id}";\n
+ALTER SEQUENCE "{identified}" OWNED BY "{table}"."{field}";\n
 SQL
 ,		
-		"field" => 
-<<<SQL
-\t"{identified}" {sql_type}{null}{default}
-SQL
-,
 		"constraint_primary" => 
 <<<SQL
-,\n\tCONSTRAINT "{table}_PK" PRIMARY KEY ({pk_field})
+,\n\tCONSTRAINT "{table}_PK" PRIMARY KEY ("{field}")
 SQL
 ,
 		"constraint_foreign" =>
 <<<SQL
 ,\n\tCONSTRAINT "{table}_{key}" FOREIGN KEY ("{identified}")
-\t\tREFERENCES "{fk_table}" ("{fk_field}") ON DELETE CASCADE\n
+\t\tREFERENCES "{fk_table}" ("{fk_field}") ON DELETE CASCADE
 SQL
 ,
 		"index_unique" => 
@@ -205,14 +207,14 @@ SQL
 	];
 	
 	/**
-	 * Таблица, с которой собраны meta-данные
+	 * Список таблиц, у которых собраные мета данные
 	 * 
-	 * @var string
+	 * @var array
 	 */
-	protected static $_meta_table = "";
+	protected static $_meta = [];
 	
 	/**
-	 * Проверка на существование по ID
+	 * Проверка на существование по первичному ключу
 	 * 
 	 * @param string $primary
 	 * @param bool $exception
@@ -224,11 +226,11 @@ SQL
 		static::_meta();
 		
 		/* Проверка на соответствие типу */
-		if (!TM_FType::check(static::$_primary['type'], $primary))
+		if (!TM_Type::check(self::$_primary[static::$_table]['type'], $primary))
 		{
 			if ($exception)
 			{
-				throw new Exception("Поле «" . static::$_primary['name'] . "» задано неверно. " . TM_FType::get_last_error());
+				throw new Exception("Поле «" . self::$_primary[static::$_table]['name'] . "» задано неверно. " . TM_Type::get_last_error());
 			}
 			else
 			{
@@ -238,7 +240,7 @@ SQL
 		
 		/* SQL */
 		$table = static::$_table;
-		$column = static::$_primary['identified'];
+		$column = self::$_primary[static::$_table]['identified'];
 		$query = 
 <<<SQL
 SELECT 
@@ -257,7 +259,7 @@ SQL;
 		{
 			if ($exception)
 			{
-				throw new Exception("«" . static::$_name . "» с полем «" . static::$_primary['identified'] . "» = «" . $primary . "» отсутствует.");
+				throw new Exception("«" . static::$_name . "» с полем «" . self::$_primary[static::$_table]['identified'] . "» = «" . $primary . "» отсутствует.");
 			}
 			else
 			{
@@ -292,17 +294,15 @@ SQL;
 				$field .= ",\n";
 			}
 
-			$field .= "\t" . TM_FType::get_sql_select($f);
+			$field .= "\t" . TM_Type::get_sql_select($f);
 		}
 		
 		/* Основной запрос */
-		$data = 
+		$query = self::_get_sql(self::$_sql['get'], 
 		[
-			"{field}" => $field,
-			"{table}" => static::$_table,
-			"{column}" => static::$_primary['identified']
-		];
-		$query = str_replace(array_keys($data), array_values($data), self::$_sql['get']);
+			"field" => $field,
+			"column" => self::$_primary[static::$_table]['identified']
+		]);
 		
 		/* Запрос */
 		$result = pg_query_params(self::$_db_conn, $query, [$primary]);
@@ -335,7 +335,7 @@ SQL;
 		static::_meta();
 		
 		/* Проверка поля where */
-		$sql_where = "";
+		$sql_where = ""; $where_info = [];
 		if (!empty($where))
 		{
 			$where_info = static::_data_info($where);
@@ -350,7 +350,7 @@ SQL;
 					$sql_where .= " AND\n";
 				}
 				
-				$sql_where .= "\t" . TM_FType::get_sql_where($f, $param_num);
+				$sql_where .= "\t" . TM_Type::get_sql_where($f, $param_num);
 				$param_num++;
 			}
 		}
@@ -394,7 +394,7 @@ SQL;
 				$sql_field .= ",\n";
 			}
 
-			$sql_field .= "\t" . TM_FType::get_sql_select($f);
+			$sql_field .= "\t" . TM_Type::get_sql_select($f);
 		}
 		
 		/* Order */
@@ -418,7 +418,7 @@ SQL;
 		/* По умолчанию */
 		else
 		{
-			$order = static::$_order;
+			$order = self::$_order[static::$_table];
 		}
 		
 		/* SQL ORDER */
@@ -447,19 +447,20 @@ SQL;
 		}
 		
 		/* Формируем запрос */
-		$data = 
+		$query = self::_get_sql(self::$_sql['select'], 
 		[
-			"{field}" => $sql_field,
-			"{table}" => static::$_table,
-			"{where}" => $sql_where,
-			"{order}" => $sql_order,
-			"{limit}" => $sql_limit
-		];
+			"field" => $sql_field,
+			"where" => $sql_where,
+			"order" => $sql_order,
+			"limit" => $sql_limit
+		]);
 		
-		$query = str_replace(array_keys($data), array_values($data), self::$_sql['select']);
+		/* Подготовим значения WHERE */
+		$where_info = self::_prepare_values($where_info);
+		$values = array_column($where_info, "value");
 		
 		/* Запрос */
-		$result = pg_query_params(self::$_db_conn, $query, array_values($where));
+		$result = pg_query_params(self::$_db_conn, $query, $values);
 		$data = pg_fetch_all($result);
 		if ($data === false)
 		{
@@ -476,7 +477,7 @@ SQL;
 	 * @param array $data
 	 * @param bool $exception_many
 	 */
-	public static function check(array $data, bool $exception_many = true)
+	public static function check(array $data, bool $exception_many = true) : bool
 	{
 		/* Собираем данные */
 		static::_meta();
@@ -487,7 +488,7 @@ SQL;
 		/* Отсутствуют данные */
 		if (empty($data))
 		{
-			throw new Exception("Нет данных для проверки.");
+			return true;
 		}
 		
 		/* Данные по полям */
@@ -497,11 +498,15 @@ SQL;
 		foreach ($fdata as $f)
 		{
 			/* NULL */
-			if ($f['value'] === null or $f['value'] === "")
+			if ($f['value'] === null)
 			{
 				if (isset($f['null']) and $f['null'] === true)
 				{
 					continue;
+				}
+				else
+				{
+					throw new Exception("Поле «{$f['name']}» не может быть задано как «NULL».");
 				}
 			}
 			
@@ -521,7 +526,7 @@ SQL;
 			}
 			
 			/* Преобразуем в строку */
-			if ($f['value'] === true or $f['value'] === false) 
+			if (is_bool($f['value'])) 
 			{
 				$f['value'] = (string)(int)$f['value'];
 			}
@@ -530,25 +535,38 @@ SQL;
 				$f['value'] = (string)$f['value'];
 			}
 			
-			/* Не заполнено */
-			if (!isset($f['default']) and trim($f['value']) === "")
+			/* Пустое значение */
+			if (trim($f['value']) === "")
 			{
-				$error = "«" . static::$_name . "». Поле «{$f['name']}» не заполнено.";
-				if ($exception_many)
+				/* Не обязательно для заполения */
+				if (isset($f['empty_allow']) and $f['empty_allow'] === true)
 				{
-					$err[$f['identified']] = $error;
 					continue;
 				}
+				/* Обязательно для заполнения */
 				else
 				{
-					throw new Exception($error);
-				}	
+					$error = "«" . static::$_name . "». Поле «{$f['name']}» не заполнено.";
+					if ($exception_many)
+					{
+						$err[$f['identified']] = $error;
+						continue;
+					}
+					else
+					{
+						throw new Exception($error);
+					}	
+				}
 			}
 			
-			/* Существует ли поле */
-			if (!TM_FType::check($f['type'], $f['value']))
+			/* Проверяем на соответствие типу */
+			if 
+			(
+				($f['type'] !== "enum" and !TM_Type::check($f['type'], $f['value'])) or
+				($f['type'] === "enum" and !TM_Type::check_enum($f['value'], $f['enum_values'])) 
+			)
 			{
-				$error = "Поле «{$f['name']}» задано неверно. " . TM_FType::get_last_error();
+				$error = "Поле «{$f['name']}» задано неверно. " . TM_Type::get_last_error();
 				if ($exception_many)
 				{
 					$err[$f['identified']] = $error;
@@ -557,7 +575,7 @@ SQL;
 				else
 				{
 					throw new Exception($error);
-				}	
+				}
 			}
 		}
 		
@@ -565,6 +583,8 @@ SQL;
 		{
 			throw new Exception_Many($err);
 		}
+		
+		return true;
 	}
 	
 	/**
@@ -602,23 +622,18 @@ SQL;
 				$where .= " AND\n\t";
 			}
 			
-			$where .= TM_FType::get_sql_where($f, $num);
+			$where .= TM_Type::get_sql_where($f, $num);
 			$num++;
 		}
 		
 		/* PRIMARY */
 		if (!empty($primary))
 		{
-			$where .= " AND\n\t" . TM_FType::get_sql_where(static::$_primary, $num, true);
+			$where .= " AND\n\t" . TM_Type::get_sql_where(self::$_primary[static::$_table], $num, true);
 		}
 
 		/* SQL */
-		$query_data = 
-		[
-			"{table}" => static::$_table,
-			"{where}" => $where
-		];
-		$query = str_replace(array_keys($query_data), array_values($query_data), self::$_sql['unique']);
+		$query = self::_get_sql(self::$_sql['unique'], ["where" => $where]);
 		
 		/* Запрос */
 		$values = array_values($data);
@@ -662,24 +677,23 @@ SQL;
 		/* Проверка */
 		static::check($data);
 		
-		/* Поля обязательные для заполнения */
+		/* Поля обязательные при вставке */
 		foreach (static::$_field as $f)
 		{
 			if 
 			(
-				!in_array($f['type'], ["text","html","tags","id","order"]) and 
-				!isset($f['default']) and
+				(!isset($f['require']) or $f['require'] === true) and
 				!in_array($f['identified'], array_keys($data))
 			)
 			{
-				throw new Exception("«" . static::$_name . "». Отсутствует поле «{$f['identified']}» обязательное для заполнения.");
+				throw new Exception("«" . static::$_name . "». Отсутствует поле «{$f['identified']}» обязательное при вставке.");
 			}
 		}
 		
 		/* Внешние ключи */
-		foreach (static::$_foreign as $fk_field)
+		foreach (self::$_foreign[static::$_table] as $fk_field)
 		{
-			if (array_key_exists("class", $fk_field))
+			if (isset($fk_field['class']))
 			{
 				/* Определяем значение внешнего ключа и делаем проверку по первичному ключу */
 				foreach ($data as $identified => $value)
@@ -701,7 +715,7 @@ SQL;
 		
 		/* Уникальность */
 		$err_unique = [];
-		foreach (static::$_unique as $un_field)
+		foreach (self::$_unique[static::$_table] as $un_field)
 		{
 			$un_data = [];
 			foreach ($un_field as $identified)
@@ -724,18 +738,19 @@ SQL;
 			$num++;
 		}
 		
-		$query_data = 
+		$query = self::_get_sql(self::$_sql['insert'], 
 		[
-			"{table}" => static::$_table,
-			"{field}" => "\"" . implode("\", \"", array_keys($data)) . "\"",
-			"{values_num}" => "\$" . implode(", \$", $values_num),
-			"{primary}" => static::$_primary['identified']
-		];
+			"field" => '"' . implode('", "', array_keys($data)) . '"',
+			"values_num" => '$' . implode(', $', $values_num),
+			"primary" => self::$_primary[static::$_table]['identified']
+		]);
 		
-		$query = str_replace(array_keys($query_data), array_values($query_data), self::$_sql['insert']);
-		
+		/* Подготовить значения */
+		$fdata = static::_data_info($data);
+		$fdata = static::_prepare_values($fdata);
+				
 		/* Запрос */
-		$result = pg_query_params(self::$_db_conn, $query, array_values($data));
+		$result = pg_query_params(self::$_db_conn, $query, array_column($fdata, "value"));
 		if ($result === false)
 		{
 			throw new Exception("«" . static::$_name . "». Не удалось вставить данные. " . pg_last_error(self::$_db_conn));
@@ -765,7 +780,7 @@ SQL;
 		$old = static::get($primary);
 		
 		/* Внешние ключи */
-		foreach (static::$_foreign as $fk_field)
+		foreach (self::$_foreign[static::$_table] as $fk_field)
 		{
 			/* Входит ли поле во внешний ключ */
 			if (array_diff($fk_field, array_keys($data)) === $fk_field)
@@ -774,7 +789,7 @@ SQL;
 			}
 			
 			/* Если присутствует класс делаем проверку */
-			if (array_key_exists("class", $fk_field))
+			if (isset($fk_field['class']))
 			{
 				/* Определяем значение внешнего ключа и делаем проверку по первичному ключу */
 				foreach ($data as $identified => $value)
@@ -795,7 +810,7 @@ SQL;
 		
 		/* Уникальность */
 		$err_unique = [];
-		foreach (static::$_unique as $un_field)
+		foreach (self::$_unique[static::$_table] as $un_field)
 		{
 			/* Входит ли поле в ключ уникальности */
 			if (array_diff($un_field, array_keys($data)) === $un_field)
@@ -841,18 +856,18 @@ SQL;
 			$num++;
 		}
 		
-		$query_data = 
+		$query = self::_get_sql(self::$_sql['update'], 
 		[
-			"{table}" => static::$_table,
-			"{field}" => $field,
-			"{primary}" => static::$_primary['identified'],
-			"{num}" => $num
-		];
+			"field" => $field,
+			"primary" => self::$_primary[static::$_table]['identified'],
+			"num" => $num
+		]);
 		
-		$query = str_replace(array_keys($query_data), array_values($query_data), self::$_sql['update']);
+		/* Подготовим значения */
+		$fdata = self::_prepare_values($fdata);
 		
 		/* Запрос */
-		$values = array_values($data);
+		$values = array_column($fdata, "value");
 		$values[] = $primary;
 		
 		$result = pg_query_params(self::$_db_conn, $query, $values);
@@ -881,12 +896,7 @@ SQL;
 		$old = self::get($primary);
 		
 		/* SQL */
-		$query_data = 
-		[
-			"{table}" => static::$_table,
-			"{primary}" => static::$_primary['identified']
-		];
-		$query = str_replace(array_keys($query_data), array_values($query_data), self::$_sql['delete']);
+		$query = self::_get_sql(self::$_sql['delete'], ["primary" => self::$_primary[static::$_table]['identified']]);
 		
 		/* Запрос */
 		$result = pg_query_params(self::$_db_conn, $query, [$primary]);
@@ -906,124 +916,79 @@ SQL;
 	 * @param boolean $drop_if_exist
 	 * @return boolean
 	 */
-	public static function create(bool $drop_if_exist = true) : bool
+	public static function create(bool $drop_if_exist = false) : bool
 	{
 		/* Собираем данные */
 		static::_meta();
 		
 		/* Удалить таблицу при наличии */
+		$drop_table = "";
 		if ($drop_if_exist)
 		{
-			$drop_table = str_replace("{table}", static::$_table, self::$_sql['drop_table']);
+			$drop_table = self::_get_sql(self::$_sql['drop_table']);
 		}
 		
-		/* Счётчик */
+		/* Счётчики */
 		$sequence_create = ""; $sequence_owned = "";
-		if (!empty(static::$_id))
+		if (!empty(self::$_seq[static::$_table]))
 		{
-			$sequence_create .= str_replace("{table}", static::$_table, self::$_sql['sequence_create']);
-			$sequence_owned .= str_replace(["{table}", "{id}"], [static::$_table, static::$_id], self::$_sql['sequence_owned']);
+			foreach (self::$_seq[static::$_table] as $seq)
+			{
+				$sequence_create .= self::_get_sql(self::$_sql['sequence_create'], ["identified" => strtolower($seq['identified'])]);
+				if ($seq['owned'] === true)
+				{
+					$sequence_owned .= self::_get_sql(self::$_sql['sequence_owned'], 
+					[
+						"identified" => strtolower($seq['identified']),
+						"field" => $seq['field']
+					]);
+				}
+			}
 		}
 		
 		/* Поля */
-		$field = "";
+		$field = "\t";
 		foreach (static::$_field as $key => $f)
 		{
 			/* Запятая */
 			if ($key !== 0)
 			{
-				$field .= ",\n";
+				$field .= ",\n\t";
 			}
 			
-			$data = [];
-			$data['{identified}'] = $f['identified'];
-			
-			/* ID */
-			if ($f['type'] === "id")
-			{
-				$data['{sql_type}'] = "int";
-				$data['{null}'] = " NOT NULL";
-				$data['{default}'] = " DEFAULT nextval('" . static::$_table . "_seq')";
-				$field .= str_replace(array_keys($data), array_values($data), self::$_sql['field']);
-				continue;
-			}
-			elseif ($f['type'] === "order")
-			{
-				$data['{sql_type}'] = "int";
-				$data['{null}'] = " NOT NULL";
-				$data['{default}'] = " DEFAULT currval('" . static::$_table . "_seq')";
-				$field .= str_replace(array_keys($data), array_values($data), self::$_sql['field']);
-				continue;
-			}
-			
-			/* SQL тип */
-			$data['{sql_type}'] = TM_FType::get_sql_create($f['type']);
-			
-			/* NULL */
-			$data['{null}'] = "";
-			if (isset($f['null']) and $f['null'] === true)
-			{
-				$data['{null}'] = " NULL";
-			}
-			else
-			{
-				$data['{null}'] = " NOT NULL";
-			}
-			
-			/* DEFAULT */
-			$data['{default}'] = "";
-			if (array_key_exists('default', $f))
-			{
-				if (is_string($f['default']))
-				{
-					$data['{default}'] = " DEFAULT '" . $f['default'] . "'";
-				}
-				elseif (is_int($f['default']) or is_float($f['default']))
-				{
-					$data['{default}'] = " DEFAULT " . $f['default'];
-				}
-				elseif (is_bool($f['default']))
-				{
-					$f['default'] = $f['default'] ? "true" : "false";
-					$data['{default}'] = " DEFAULT " . $f['default'];
-				}
-				elseif ($f['default'] === null)
-				{
-					$data['{default}'] = " DEFAULT NULL";
-				}
-			}
-			
-			$field .= str_replace(array_keys($data), array_values($data), self::$_sql['field']);
+			$field .= TM_Type::get_sql_create(static::$_table, $f);
 		}
 		
 		/* PRIMARY */
 		$primary = "";
-		if (!empty(static::$_primary))
+		if (!empty(self::$_primary[static::$_table]))
 		{
-			$pk_field = '"' . static::$_primary['identified'] . '"';
-			$primary = str_replace(['{table}', '{pk_field}'], [static::$_table, $pk_field], self::$_sql['constraint_primary']);
+			$primary = self::_get_sql
+			(
+				self::$_sql['constraint_primary'], 
+				[
+					"field" => self::$_primary[static::$_table]['identified']
+				]
+			);
 		}
 		
 		/* UNIQUE */
 		$unique = "";
-		if (!empty(static::$_unique))
+		if (!empty(self::$_unique[static::$_table]))
 		{
 			$num = 1;
-			foreach (static::$_unique as $key => $field_un)
+			foreach (self::$_unique[static::$_table] as $key => $field_un)
 			{
 				$field_un = static::_data_info($field_un);
 								
 				/* NULL полей нет */
 				if (array_search(true, array_column($field_un, "null")) === false or count($field_un) === 1)
 				{
-					$data = 
+					$unique .= self::_get_sql(self::$_sql['index_unique'], 
 					[
-						"{table}" => static::$_table,
-						"{key}" => "UN" . $num,
-						"{field}" => "\"" . implode("\", \"", array_column($field_un, "identified")) . "\""
-					];
-					
-					$unique .= str_replace(array_keys($data), array_values($data), self::$_sql['index_unique']);
+						"key" => "UN" . $num,
+						"field" => '"' . implode('", "', array_column($field_un, "identified")) . '"'
+					]);
 				}
 				/* Есть NULL поля */
 				else
@@ -1038,17 +1003,13 @@ SQL;
 							$key = array_search($f['identified'], $field_all_but);
 							unset($field_all_but[$key]);
 							
-							
-							$data = 
+							$unique .= self::_get_sql(self::$_sql['index_unique_null'], 
 							[
-								"{table}" => static::$_table,
-								"{key}" => "UN" . $num,
-								"{field}" => $f['identified'],
-								"{field_all}" => "\"" . implode("\", \"", array_column($field_un, "identified")) . "\"",
-								"{field_all_but}" => "\"" . implode("\", \"", $field_all_but) . "\"",
-							];
-							
-							$unique .= str_replace(array_keys($data), array_values($data), self::$_sql['index_unique_null']);
+								"key" => "UN" . $num,
+								"field" => $f['identified'],
+								"field_all" => '"' . implode('", "', array_column($field_un, "identified")) . '"',
+								"field_all_but" => '"' . implode('", "', $field_all_but) . '"',
+							]);
 						}
 					}
 					
@@ -1060,28 +1021,29 @@ SQL;
 		
 		/* Foreign */
 		$foreign = "";
-		if (!empty(static::$_foreign))
+		foreach (self::$_foreign[static::$_table] as $v)
 		{
-			foreach (static::$_foreign as $v)
-			{
-				$data = 
-				[
-					"{table}" => static::$_table,
-					"{key}" => $v['key'],
-					"{identified}" => $v['identified'],
-					"{fk_table}" => $v['table'],
-					"{fk_field}" => $v['field']
-				];
-				
-				$foreign .= str_replace(array_keys($data), array_values($data), self::$_sql['constraint_foreign']);
-			}
+			$foreign .= self::_get_sql(self::$_sql['constraint_foreign'], 
+			[
+				"key" => $v['key'],
+				"identified" => $v['identified'],
+				"fk_table" => $v['table'],
+				"fk_field" => $v['field']
+			]);
+		}
+		
+		/* Другие ограничения */
+		$constraint = "";
+		foreach (self::$_sql_constraint[static::$_table] as $val)
+		{
+			$constraint .= ",\n\t" . $val;
 		}
 		
 		/* COMMENT TABLE */
 		$comment_table = "";
 		if (!empty(static::$_name))
 		{
-			$comment_table .= str_replace(['{table}','{name}'], [static::$_table, static::$_name], self::$_sql['comment_table']);
+			$comment_table .= self::_get_sql(self::$_sql['comment_table'], ['name' => pg_escape_string(static::$_name)]);
 		}
 		
 		/* COMMENT COLUMN */
@@ -1090,33 +1052,28 @@ SQL;
 		{
 			if (!empty($f['name']))
 			{
-				$data = 
+				$comment_column .= self::_get_sql(self::$_sql['comment_column'], 
 				[
-					"{table}" => static::$_table,
-					"{identified}" => $f['identified'],
-					"{name}" => pg_escape_string($f['name'])
-				];
-				
-				$comment_column .= str_replace(array_keys($data), array_values($data), self::$_sql['comment_column']);
+					"identified" => $f['identified'],
+					"name" => pg_escape_string($f['name'])
+				]);
 			}
 		}
 		
 		/* Формируем общий SQL */
-		$data = 
+		$query = self::_get_sql(self::$_sql['create'], 
 		[
-			"{drop_table}" => $drop_table,
-			"{sequence_create}" => $sequence_create,
-			"{sequence_owned}" => $sequence_owned,
-			"{table}" => static::$_table,
-			"{field}" => $field,
-			"{primary}" => $primary,
-			"{unique}" => $unique,
-			"{foreign}" => $foreign,
-			"{comment_table}" => $comment_table,
-			"{comment_column}" => $comment_column
-		];
-		
-		$query = str_replace(array_keys($data), array_values($data), self::$_sql['create']);
+			"drop_table" => $drop_table,
+			"sequence_create" => $sequence_create,
+			"sequence_owned" => $sequence_owned,
+			"field" => $field,
+			"primary" => $primary,
+			"unique" => $unique,
+			"foreign" => $foreign,
+			"constraint" => $constraint,
+			"comment_table" => $comment_table,
+			"comment_column" => $comment_column
+		]);
 		
 		/* Запрос */
 		$result = pg_query(self::$_db_conn, $query);
@@ -1153,9 +1110,9 @@ SQL;
 				throw new Exception("Таблица «" . static::$_table . "». Не указан идентификатор у поля.");
 			}
 
-			if (!TM_FType::check("identified", $f['identified']))
+			if (!TM_Type::check("identified", $f['identified']))
 			{
-				throw new Exception("Поле «" . static::$_table . ".{$f['identified']}». Идентификатор задан неверно. " . TM_FType::get_last_error());
+				throw new Exception("Поле «" . static::$_table . ".{$f['identified']}». Идентификатор задан неверно. " . TM_Type::get_last_error());
 			}
 
 			/* Наименование поля */
@@ -1164,9 +1121,9 @@ SQL;
 				throw new Exception("Поле «" . static::$_table . ".{$f['identified']}». Наименование не задано.");
 			}
 
-			if (!TM_FType::check("string", $f['name']))
+			if (!TM_Type::check("string", $f['name']))
 			{
-				throw new Exception("Поле «" . static::$_table . ".{$f['identified']}». Наименование задано неверно. " . TM_FType::get_last_error());
+				throw new Exception("Поле «" . static::$_table . ".{$f['identified']}». Наименование задано неверно. " . TM_Type::get_last_error());
 			}
 
 			/* Тип */
@@ -1174,38 +1131,50 @@ SQL;
 			{
 				throw new Exception("Поле «" . static::$_table . ".{$f['identified']}». Не указан тип.");
 			}
-			if (!TM_FType::is($f['type']))
+			if (!TM_Type::is($f['type']))
 			{
 				throw new Exception("Поле «" . static::$_table . ".{$f['identified']}». Отсутствует тип столбца «{$f['type']}».");
 			}
 
 			/* NULL */
-			if (isset($f['null']) and $f['null'] !== true and $f['null'] !== false)
+			if (isset($f['null']) and !is_bool($f['null']))
 			{	
 				throw new Exception("Поле «" . static::$_table . ".{$f['identified']}». NULL задан неверно. Необходимо указать «true» или «false».");
 			}
-
-			/* DEFAULT */
-			if (array_key_exists("default", $f))
+			
+			/* Enum */
+			if ($f['type'] === "enum")
 			{
-				if (is_bool($f['default']))
+				if (empty($f['enum_values']))
 				{
-					$f['default'] = (string)(int)$f['default'];
+					throw new Exception("Поле «" . static::$_table . ".{$f['identified']}». Не задан «enum_values»");
 				}
-
-				if (!is_null($f['default']) and !TM_FType::check($f['type'], $f['default']))
+				
+				if (!is_array($f['enum_values']))
 				{
-					throw new Exception("Поле «" . static::$_table . ".{$f['identified']}». DEFAULT задан неверно. Не соответствие типу. " . TM_FType::get_last_error());
+					throw new Exception("Поле «" . static::$_table . ".{$f['identified']}». «enum_values» не является массивом.");
 				}
-
-				if (is_null($f['default']) and isset($f['null']) and $f['null'] === false)
+				
+				if (array_values($f['enum_values']) !== $f['enum_values'])
 				{
-					throw new Exception("Поле «" . static::$_table . ".{$f['identified']}». DEFAULT не может быть NULL, т.к. столбец NOT NULL.");
+					throw new Exception("Поле «" . static::$_table . ".{$f['identified']}». «enum_values» не является списком.");
 				}
+			}
+			
+			/* REQUIRE */
+			if (isset($f['require']) and !is_bool($f['require']))
+			{
+				throw new Exception("Поле «" . static::$_table . ".{$f['identified']}». «require» задан неверно. Необходиом указать «true» или «false».");
+			}
+			
+			/* EMPTY_ALLOW */
+			if (isset($f['empty_allow']) and !is_bool($f['empty_allow']))
+			{
+				throw new Exception("Поле «" . static::$_table . ".{$f['identified']}». «empty_allow» задан неверно. Необходиом указать «true» или «false».");
 			}
 
 			/* PRIMARY */
-			if (isset($f['primary']) and $f['primary'] !== true and $f['primary'] !== false)
+			if (isset($f['primary']) and !is_bool($f['primary']))
 			{
 				throw new Exception("Поле «" . static::$_table . ".{$f['identified']}». PRIMARY задан неверно. Необходиом указать «true» или «false».");
 			}
@@ -1227,7 +1196,7 @@ SQL;
 			}
 
 			/* UNIQUE */
-			if (isset($f['unique']) and $f['unique'] !== true and $f['unique'] !== false)
+			if (isset($f['unique']) and !is_bool($f['unique']))
 			{
 				throw new Exception("Поле «" . static::$_table . ".{$f['identified']}». UNIQUE задан неверно. Необходиом указать «true» или «false».");
 			}
@@ -1243,9 +1212,9 @@ SQL;
 
 					foreach ($f['unique_key'] as $un)
 					{
-						if (!TM_FType::check("identified", $un))
+						if (!TM_Type::check("identified", $un))
 						{
-							throw new Exception("Поле «" . static::$_table . ".{$f['identified']}». UNIQUE KEY задан неверно. " . TM_FType::get_last_error());
+							throw new Exception("Поле «" . static::$_table . ".{$f['identified']}». UNIQUE KEY задан неверно. " . TM_Type::get_last_error());
 						}
 					}
 				}
@@ -1260,26 +1229,26 @@ SQL;
 					throw new Exception("Поле «" . static::$_table . ".{$f['identified']}». Foreign задан неверно. Не указан параметр «table» или «field».");
 				}
 				
-				if (!TM_FType::check("identified", $foreign['table']))
+				if (!TM_Type::check("identified", $foreign['table']))
 				{
-					throw new Exception("Поле «" . static::$_table . ".{$f['identified']}». Foreign задан неверно. Параметр «table» задан неверно. " . TM_FType::get_last_error());
+					throw new Exception("Поле «" . static::$_table . ".{$f['identified']}». Foreign задан неверно. Параметр «table» задан неверно. " . TM_Type::get_last_error());
 				}
 				
-				if (!TM_FType::check("identified", $foreign['field']))
+				if (!TM_Type::check("identified", $foreign['field']))
 				{
-					throw new Exception("Поле «" . static::$_table . ".{$f['identified']}». Foreign задан неверно. Параметр «field» задан неверно. " . TM_FType::get_last_error());
+					throw new Exception("Поле «" . static::$_table . ".{$f['identified']}». Foreign задан неверно. Параметр «field» задан неверно. " . TM_Type::get_last_error());
 				}
 				
-				if (array_key_exists("key", $foreign) and !TM_FType::check("identified", $foreign['key']))
+				if ($foreign['key'] and !TM_Type::check("identified", $foreign['key']))
 				{
-					throw new Exception("Поле «" . static::$_table . ".{$f['identified']}». Foreign задан неверно. Параметр «key» задан неверно. " . TM_FType::get_last_error());
+					throw new Exception("Поле «" . static::$_table . ".{$f['identified']}». Foreign задан неверно. Параметр «key» задан неверно. " . TM_Type::get_last_error());
 				}
 				
-				if (array_key_exists("class", $foreign))
+				if (isset($foreign['class']))
 				{
-					if (!TM_FType::check("identified", $foreign['class']))
+					if (!TM_Type::check("identified", $foreign['class']))
 					{
-						throw new Exception("Поле «" . static::$_table . ".{$f['identified']}». Foreign задан неверно. Параметр «class» задан неверно. " . TM_FType::get_last_error());
+						throw new Exception("Поле «" . static::$_table . ".{$f['identified']}». Foreign задан неверно. Параметр «class» задан неверно. " . TM_Type::get_last_error());
 					}
 					
 					if (!class_exists($foreign['class']))
@@ -1288,36 +1257,97 @@ SQL;
 					}
 					
 					/* Только поле - первичный ключ может быть внешним ключом */
-					$foreign_field = call_user_func([$foreign['class'], "get_field"]);
+					$foreign_primary = call_user_func([$foreign['class'], "get_meta"], "primary");
 					
-					if (!in_array($foreign['field'], array_column($foreign_field, "identified")))
+					if ($foreign['field'] !== $foreign_primary['identified'])
 					{
-						throw new Exception("Поле «" . static::$_table . ".{$f['identified']}». Foreign задан неверно. Поле «{$foreign['table']}.{$foreign['field']}» отсутствует.");
+						throw new Exception("Поле «" . static::$_table . ".{$f['identified']}». Foreign задан неверно. Поле «{$foreign['table']}.{$foreign['field']}» не является первичным ключом.");
 					}
+				}
+			}
+	
+			/* SQL */
+			if 
+			(
+				isset($f['sql_select']) and !is_string($f['sql_select']) or
+				isset($f['sql_create']) and !is_string($f['sql_create']) or
+				isset($f['sql_constraint']) and !is_string($f['sql_constraint']) or
+				isset($f['sql_type']) and !is_string($f['sql_type'])
+			)
+			{
+				throw new Exception("Поле «" . static::$_table . ".{$f['identified']}». SQL команды заданы неверно.");
+			}
+			
+			/* prepare. Функция обработки значения перед запросом */
+			if (isset($f['prepare']))
+			{
+				if (!is_callable($f['prepare']))
+				{
+					throw new Exception("Поле «" . static::$_table . ".{$f['identified']}». «prepare» не является ссылкой на функцию.");
+				}
+			}
+			
+			/* equal. Оператор равенства для SQL-команд */
+			if (isset($f['equal']) and !in_array($f['equal'], ["=","like","ilike"]))
+			{
+				throw new Exception("Поле «" . static::$_table . ".{$f['identified']}». «equal» задан неверно. Допускаются значения «=», «like», «ilike».");
+			}
+			
+			/* seq, seq_owned. Счётчики */
+			if (isset($f['seq']))
+			{
+				if (!TM_Type::check("identified", $f['seq']))
+				{
+					throw new Exception("Поле «" . static::$_table . ".{$f['identified']}». «seq» задан неверно. " . TM_Type::get_last_error());
+				}
+				
+				if (isset($f['seq_type']) and !in_array($f['seq_type'], ["next","current"]))
+				{
+					throw new Exception("Поле «" . static::$_table . ".{$f['identified']}». «seq_type» задан неверно. Необходиом указать «next» или «current».");
+				}
 					
-					foreach ($foreign_field as $ff)
-					{
-						if ($ff['identified'] === $foreign['field'])
-						{
-							if (!array_key_exists("primary", $ff) and $ff['type'] !== "id")
-							{
-								throw new Exception("Поле «" . static::$_table . ".{$f['identified']}». Foreign задан неверно. Поле «{$foreign['table']}.{$foreign['field']}» не является первичным ключом.");
-							}
-							
-							break;
-						}
-					}
-				}	
+				if (isset($f['seq_owned']) and !is_bool($f['seq_owned']))
+				{
+					throw new Exception("Поле «" . static::$_table . ".{$f['identified']}». «seq_owned» задан неверно. Необходиом указать «true» или «false».");
+				}
+			}
+		}
+		
+		/* Получаем meta и проверяем DEFAULT значения */
+		static::_meta();
+		foreach (static::$_field as $f)
+		{
+			if (array_key_exists("default", $f))
+			{
+				self::check([$f['identified'] => $f['default']], false);
 			}
 		}
 	}
 	
 	/**
-	 * Вернуть все поля
+	 * Получить мета данные по таблице
+	 * 
+	 * @param string $meta
+	 * @return array
 	 */
-	public static function get_field() : array
+	public static function get_meta($meta) : array
 	{
-		return static::$_field;
+		static::_meta();
+		
+		if (!in_array($meta, ["field", "primary", "order", "unique", "foreign", "seq"]))
+		{
+			throw new Exception("Таблица «" . static::$_table . "». Метаданные типа «{$meta}» отсутствуют.");
+		}
+		
+		if ($meta === "field")
+		{
+			return static::$_field;
+		}
+		else
+		{
+			$meta = "_" . $meta;
+			return self::$$meta[static::$_table];
+		}
 	}
 
 	/**
@@ -1326,7 +1356,7 @@ SQL;
 	 * @param array $data
 	 * @return array
 	 */
-	protected static function _data_info(array $data) : array
+	private static function _data_info(array $data) : array
 	{
 		$fdata = [];
 		
@@ -1382,40 +1412,42 @@ SQL;
 	/**
 	 * Собираем информацию по таблице
 	 */
-	protected static function _meta() : bool
+	private static function _meta() : bool
 	{
 		/* Не собирать повторно */
-		if (self::$_meta_table === static::$_table)
+		if (in_array(static::$_table, self::$_meta))
 		{
 			return true;
 		}
 		
-		/* Опустошаем элементы чтобы не переназначились другим классам */
-		static::$_primary = [];
-		static::$_order = [];
-		static::$_unique = [];
-		static::$_foreign = [];
-		static::$_id = null;
+		/* Создаём ключи по нашей таблице */
+		self::$_primary[static::$_table] = [];
+		self::$_order[static::$_table] = [];
+		self::$_unique[static::$_table] = [];
+		self::$_foreign[static::$_table] = [];
+		self::$_seq[static::$_table] = [];
+		self::$_sql_constraint[static::$_table] = [];
 		
-		$un_num = 0;
-		foreach (static::$_field as $f)
+		/* Совмещаем данные полей с полями типа */
+		foreach (static::$_field as $key => $f)
 		{
-			/* ID */
-			if ($f['type'] === "id")
-			{
-				static::$_id = $f['identified'];
-				$f['primary'] = true;
-			}
-			
+			$type = TM_Type::get($f['type']);
+			static::$_field[$key] = array_merge($type, $f);
+		}
+		
+		/* Собираем сведения */
+		$un_num = 0;
+		foreach (static::$_field as $key => $f)
+		{
 			/* Primary */
 			if (isset($f['primary']) and $f['primary'] === true)
 			{	
-				if (!empty(static::$_primary))
+				if (!empty(self::$_primary[static::$_table]))
 				{
 					throw new Exception("Таблица «" . static::$_table . "». Два первичных ключа.");
 				}
 				
-				static::$_primary = 
+				self::$_primary[static::$_table] = 
 				[
 					"identified" => $f['identified'],
 					"name" => $f['name'],
@@ -1426,7 +1458,7 @@ SQL;
 			/* Order */
 			if (isset($f['order']))
 			{
-				static::$_order[$f['identified']] = strtolower($f['order']);
+				self::$_order[static::$_table][$f['identified']] = strtolower($f['order']);
 			}
 			
 			/* Unique */
@@ -1451,12 +1483,12 @@ SQL;
 				
 				foreach ($unique_key as $un)
 				{
-					static::$_unique[$un][] = $f['identified'];
+					self::$_unique[static::$_table][$un][] = $f['identified'];
 				}
 			}
 			
 			/* Foreign */
-			if (array_key_exists("foreign", $f))
+			if (isset($f['foreign']))
 			{
 				if (empty($f['foreign']['key']))
 				{
@@ -1465,20 +1497,119 @@ SQL;
 				
 				$f['foreign']['identified'] = $f['identified'];
 				
-				static::$_foreign[] =  $f['foreign'];
+				self::$_foreign[static::$_table][] = $f['foreign'];
+			}
+			
+			/* SEQUNECE */
+			if (isset($f['seq']))
+			{
+				$seq_identified = self::_get_sql($f['seq'], [$f['identified']]);
+				
+				$seq_owned = false;
+				if (isset($f['seq_owned']) and $f['seq_owned'] === true)
+				{
+					$seq_owned = true;
+				}
+				
+				/* Добавить только один раз */
+				$seq_key = false;
+				if (!empty(self::$_seq[static::$_table]))
+				{
+					$seq_key = array_search($seq_identified, array_column(self::$_seq[static::$_table], "identified"));
+				}
+				
+				if ($seq_key === false)
+				{
+					$seq = 
+					[
+						"identified" => $seq_identified,
+						"owned" => $seq_owned
+					];
+					
+					if ($seq_owned === true)
+					{
+						$seq['field'] = $f['identified'];
+					}
+					
+					self::$_seq[static::$_table][] = $seq;
+				}
+				elseif ($seq_key !== false and $seq_owned === true)
+				{
+					self::$_seq[static::$_table][$seq_key]['owned'] = true;
+				}
+			}
+			
+			/* default, require */
+			if (array_key_exists("default", $f))
+			{
+				static::$_field[$key]['require'] = false;
+			}
+			
+			/* Ограничения */
+			if (isset($f['sql_constraint']))
+			{
+				$f['enum_values'] = "'" . implode("', '", $f['enum_values']) . "'";
+				self::$_sql_constraint[static::$_table][] = self::_get_sql($f['sql_constraint'], $f);
 			}
 		}
 		
 		/* Ещё проверки */
-		if (empty(static::$_primary))
+		if (empty(self::$_primary[static::$_table]))
 		{
 			throw new Exception("Таблица «" . static::$_table . "». Не задан первичный ключ.");
 		}
 		
-		/* Укажим таблицу */
-		self::$_meta_table = static::$_table;
+		/* Укажим таблицу у которой собрана meta */
+		self::$_meta[] = static::$_table;
 		
 		return true;
+	}
+	
+	/**
+	 * Получить SQL на основании шаблона
+	 * 
+	 * @param string $sql
+	 * @param array $data
+	 * @return string
+	 */
+	private static function _get_sql(string $sql, array $data = []) : string
+	{
+		/* Данные по умолчанию */
+		if (!isset($data['table']))
+		{
+			$data['table'] = static::$_table;
+		}
+		
+		/* Ключи в фигурные скобки */
+		foreach ($data as $key => $value)
+		{
+			$data['{' . $key . '}'] = $value;
+			unset($data[$key]);
+		}
+		
+		/* Замена */
+		$sql = strtr($sql, $data);
+		
+		return $sql;
+	}
+	
+	/**
+	 * Подготовить значения
+	 * 
+	 * @param array $fdata
+	 * @return array
+	 */
+	private static function _prepare_values(array $fdata) : array
+	{
+		foreach ($fdata as $key => $f)
+		{
+			if (!empty($f['prepare']))
+			{
+				$fdata[$key]['value'] = TM_Type::prepare($f['value'], $f['prepare']);
+			}
+		}
+		
+		return $fdata;
 	}
 }
 

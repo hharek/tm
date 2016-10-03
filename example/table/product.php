@@ -48,7 +48,13 @@ class Product extends TM
 			"identified" => "Content",
 			"name" => "Содержание",
 			"type" => "html",
-			"null" => true
+			"null" => true,
+			"require" => false
+		],
+		[
+			"identified" => "Price",
+			"name" => "Цена",
+			"type" => "price"
 		],
 		[
 			"identified" => "Category_ID",

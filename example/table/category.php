@@ -35,7 +35,14 @@ class Category extends TM
 			"name" => "Наименование",
 			"type" => "string",
 			"unique" => true,
-			"unique_key" => "UN_Name",
+			"unique_key" => "UN_Name"
+		],
+		[
+			"identified" => "Content",
+			"name" => "Описание",
+			"type" => "html",
+			"empty_allow" => true,
+			"require" => false
 		],
 		[
 			"identified" => "Url",
@@ -63,6 +70,24 @@ class Category extends TM
 				"field" => "ID",
 				"class" => "Category"
 			]
+		],
+		[
+			"identified" => "Priority",
+			"name" => "Приоритет",
+			"type" => "serial"
+		],
+		[
+			"identified" => "Color",
+			"name" => "Цвет",
+			"type" => "enum",
+			"enum_values" => ["красный", "зелёный", "синий"],
+			"default" => "зелёный"
+		],
+		[
+			"identified" => "Active",
+			"name" => "Активность",
+			"type" => "boolean",
+			"default" => false
 		]
 	];
 }

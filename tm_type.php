@@ -2,90 +2,148 @@
 /**
  * Table Manager. Field Type - Типы полей таблицы
  */
-class TM_FType
+class TM_Type
 {
 	/**
 	 * Текст последней ошибки
 	 * 
 	 * @var string
 	 */
-	private static $_error;
+	private static $_last_error;
 	
 	/**
-	 * Доступные типы
+	 * Типы
 	 * 
 	 * @var array
 	 */
-	private static $_type = 
+	private static $_ = 
 	[
-		"identified",
-		"string",
-		"text",
-		"html",
-		"int",
-		"uint",
-		"boolean",
-		"email",
-		"price",
-		"date",
-		"datetime",
-		"url_part",
-		"url_path",
-		"url",
-		"tags",
-		"path",
-		"ip",
-		"id",
-		"order"
+		"identified" => 
+		[
+			"sql_type" => "varchar(127)",
+			"prepare" => "strtolower"
+		],
+		"string" => 
+		[
+			"sql_type" => "varchar(255)",
+			"equal" => "ilike"
+		],
+		"text" => 
+		[
+			"sql_type" => "text",
+			"equal" => "ilike",
+			"null" => true
+		],
+		"html" => 
+		[
+			"sql_type" => "text",
+			"equal" => "ilike",
+			"null" => true
+		],
+		"int" => 
+		[
+			"sql_type" => "int"
+		],
+		"uint" => 
+		[
+			"sql_type" => "int"
+		],
+		"boolean" => 
+		[
+			"sql_type" => "boolean",
+			"sql_select" => "\"{identified}\"::int",
+			"prepare" => ["self", "_prepare_boolean"]
+		],
+		"email" => 
+		[
+			"sql_type" => "varchar(127)",
+			"prepare" => "strtolower"
+		],
+		"price" => 
+		[
+			"sql_type" => "numeric(10,2)",
+			"prepare" => ["self", "_prepare_price"]
+		],
+		"date" => 
+		[
+			"sql_type" => "date",
+			"prepare" => ["self", "_prepare_date"]
+		],
+		"datetime" => 
+		[
+			"sql_type" => "timestamp",
+			"prepare" => ["self", "_prepare_datetime"]
+		],
+		"url_part" => 
+		[
+			"sql_type" => "varchar(255)",
+			"prepare" => "mb_strtolower",
+			"equal" => "like"
+		],
+		"url_path" => 
+		[
+			"sql_type" => "varchar(255)",
+			"prepare" => "mb_strtolower",
+			"equal" => "like"
+		],
+		"url" => 
+		[
+			"sql_type" => "varchar(255)",
+			"prepare" => "mb_strtolower",
+			"equal" => "like"
+		],
+		"tags" => 
+		[
+			"sql_type" => "text",
+			"prepare" => "mb_strtolower",
+			"equal" => "like",
+			"null" => true
+		],
+		"path" => 
+		[
+			"sql_type" => "varchar(255)",
+			"prepare" => "mb_strtolower",
+			"equal" => "like"
+		],
+		"ip" => 
+		[
+			"sql_type" => "varchar(15)"
+		],
+		"serial" => 
+		[
+			"sql_type" => "int",
+			"sql_create" => "\"{identified}\" serial NOT NULL",
+			"require" => false
+		],
+		"id" => 
+		[
+			"sql_type" => "int",
+			"seq" => "{table}_seq",
+			"seq_type" => "next",
+			"seq_owned" => true,
+			"primary" => true,
+			"require" => false
+		],
+		"order" => 
+		[
+			"sql_type" => "int",
+			"seq" => "{table}_seq",
+			"seq_type" => "current",
+			"require" => false
+		],
+		"enum" =>
+		[
+			"sql_type" => "varchar(255)",
+			"sql_constraint" => "CONSTRAINT \"{table}_{identified}_check\" CHECK (\"{identified}\" IN ({enum_values}))",
+			"equal" => "like"
+		],
+		"json" => 
+		[
+			"sql_type" => "jsonb",
+			"null" => true
+		]
 	];
 	
-	/**
-	 * SQL тип по каждому типу
-	 * 
-	 * @var array
-	 */
-	private static $_sql = 
-	[
-		"identified" => "varchar(255)",
-		"string" => "varchar(255)",
-		"text" => "text",
-		"html" => "text",
-		"int" => "int",
-		"uint" => "int",
-		"boolean" => "boolean",
-		"email" => "varchar(127)",
-		"price" => "numeric(10,2)",
-		"date" => "date",
-		"datetime" => "timestamp",
-		"url_part" => "varchar(255)",
-		"url_path" => "varchar(255)",
-		"url" => "varchar(255)",
-		"tags" => "text",
-		"path" => "varchar(255)",
-		"ip" => "varchar(15)",
-		"id" => "int",
-		"order" => "int"
-	];
-	
-	/**
-	 * Типы для которых для равенства использовать оператор ILIKE
-	 * 
-	 * @var array
-	 */
-	private static $_type_ilike = 
-	[
-		"identified", 
-		"string", 
-		"text", 
-		"html", 
-		"email", 
-		"url_part", 
-		"url_path", 
-		"url", 
-		"tags", 
-		"path"
-	];
-
 	/**
 	 * Проверка поля
 	 * 
@@ -98,7 +156,7 @@ class TM_FType
 		try
 		{
 			/* Доступный тип */
-			if (!in_array($type, self::$_type))
+			if (!array_key_exists($type, self::$_))
 			{
 				throw new Exception("Указанный тип «{$type}» отсутствует.");
 			}
@@ -122,18 +180,36 @@ class TM_FType
 			}
 
 			/* Проверка по типу */
-			self::{"_" . $type}($str);
+			self::{"_check_" . $type}($str);
 			
 			return true;
 		}
 		catch (Exception $e)
 		{
-			self::$_error = $e->getMessage();
+			self::$_last_error = $e->getMessage();
 			
 			return false;
 		}
 	}
 	
+	/**
+	 * Проверить тип enum
+	 * 
+	 * @param string $str
+	 * @param array $enum_values
+	 * @return bool
+	 */
+	public static function check_enum(string $str, array $enum_values) : bool
+	{
+		if (!in_array($str, $enum_values))
+		{
+			self::$_last_error = "Доступные значения: " . implode(", ", $enum_values) . ".";
+			return false;
+		}
+		
+		return true;
+	}
+
 	/**
 	 * Текст последней ошибки
 	 * 
@@ -141,7 +217,7 @@ class TM_FType
 	 */
 	public static function get_last_error() : string
 	{
-		return self::$_error;
+		return self::$_last_error;
 	}
 	
 	/**
@@ -151,23 +227,119 @@ class TM_FType
 	 */
 	public static function is(string $type) : bool
 	{
-		return in_array($type, self::$_type);
+		return isset(self::$_[$type]);
 	}
 	
 	/**
-	 * Получить SQL по типу для запроса CREATE
+	 * Получить сведения по типу
 	 * 
 	 * @param string $type
+	 * @return array
+	 */
+	public static function get(string $type) : array
+	{
+		return self::$_[$type];
+	}
+
+	/**
+	 * Получить SQL для запроса CREATE 
+	 * 
+	 * @param string $table
+	 * @param array $field
 	 * @return string
 	 */
-	public static function get_sql_create(string $type) : string
+	public static function get_sql_create(string $table, array $field) : string
 	{
-		if (!in_array($type, self::$_type))
+		/* Имя счётчика */
+		$seq = "";
+		if (!empty($field['seq']))
 		{
-			throw new Exception("Указанный тип «{$type}» отсутствует.");
+			$seq = strtr($field['seq'], 
+			[
+				"{identified}" => $field['identified'],
+				"{table}" => $table
+			]);
+			$seq = strtolower($seq);
 		}
 		
-		return self::$_sql[$type];
+		/* Свой SQL-create */
+		if (isset($field['sql_create']))
+		{
+			return strtr($field['sql_create'], 
+			[
+				"{identified}" => $field['identified'],
+				"{table}" => $table,
+				"{seq}" => $seq
+			]) ;
+		}
+		
+		/* Шаблон */
+		$sql = "\"{identified}\" {sql_type}{null}{default}";
+		
+		$data = [];
+		$data['{identified}'] = $field['identified'];
+
+		/* SQL тип */
+		$data['{sql_type}'] = self::$_[$field['type']]['sql_type'];
+
+		/* NULL */
+		$data['{null}'] = "";
+		if (isset($field['null']) and $field['null'] === true)
+		{
+			$data['{null}'] = " NULL";
+		}
+		else
+		{
+			$data['{null}'] = " NOT NULL";
+		}
+
+		/* DEFAULT */
+		$data['{default}'] = "";
+		
+		if (!isset($field['seq']))
+		{
+			if (array_key_exists('default', $field))
+			{
+				if (is_string($field['default']))
+				{
+					$data['{default}'] = " DEFAULT '" . $field['default'] . "'";
+				}
+				elseif (is_int($field['default']) or is_float($field['default']))
+				{
+					$data['{default}'] = " DEFAULT " . $field['default'];
+				}
+				elseif (is_bool($field['default']))
+				{
+					$field['default'] = $field['default'] ? "true" : "false";
+					$data['{default}'] = " DEFAULT " . $field['default'];
+				}
+				elseif ($field['default'] === null)
+				{
+					$data['{default}'] = " DEFAULT NULL";
+				}
+			}
+		}
+		else
+		{
+			$seq_type = "next";
+			if (isset($field['seq_type']))
+			{
+				$seq_type = $field['seq_type'];
+			}
+			
+			if ($seq_type === "next")
+			{
+				$data['{default}'] = str_replace("{seq}", $seq, " DEFAULT nextval('{seq}')");
+			}
+			elseif ($seq_type === "current")
+			{
+				$data['{default}'] = str_replace("{seq}", $seq, " DEFAULT currval('{seq}')");
+			}
+		}
+		
+		$sql = strtr($sql, $data);
+		
+		return $sql;
 	}
 	
 	/**
@@ -178,13 +350,14 @@ class TM_FType
 	 */
 	public static function get_sql_select(array $field) : string
 	{
-		/* Добавляем */
+		$type = $field['type'];
+		
 		$sql = "\"" . $field['identified'] . "\"";
-
-		/* boolean */
-		if ($field['type'] === "boolean")
+		
+		/* Свой SELECT */
+		if (isset(self::$_[$type]['sql_select']))
 		{
-			$sql .= "::int";
+			$sql = str_replace("{identified}", $field['identified'], self::$_[$type]['sql_select']);
 		}
 		
 		return $sql;
@@ -199,22 +372,23 @@ class TM_FType
 	 */
 	public static function get_sql_where(array $field, int $num = 1, bool $not = false) : string
 	{
+		$type = $field['type'];
+		
 		/* Оператор равенства */
 		$equal = "=";
-		if ($not)
+		if (isset(self::$_[$type]['equal']))
 		{
-			$equal = "!=";
+			$equal = self::$_[$type]['equal'];
 		}
 		
-		if (in_array($field['type'], self::$_type_ilike))
+		/* NOT */
+		if ($not)
 		{
-			if (!$not)
+			switch ($equal)
 			{
-				$equal = "ILIKE";
-			}
-			else
-			{
-				$equal = "NOT ILIKE";
+				case "=":		$equal = "!=";			break;
+				case "like":	$equal = "NOT LIKE";	break;
+				case "ilike":	$equal = "NOT ILIKE";	break;
 			}
 		}
 		
@@ -226,17 +400,17 @@ class TM_FType
 		/* NULL */
 		else
 		{
-			$type = self::$_sql[$field['type']];
+			$sql_type = self::$_[$type]['sql_type'];
 			
 			$sql = 
 <<<SQL
 (
 		(
-			\${$num}::{$type} IS NULL AND
+			\${$num}::{$sql_type} IS NULL AND
 			"{$field['identified']}" IS NULL
 		) OR
 		(
-			\${$num}::{$type} IS NOT NULL AND
+			\${$num}::{$sql_type} IS NOT NULL AND
 			"{$field['identified']}" {$equal} \${$num}
 		)
 	)
@@ -244,8 +418,18 @@ SQL;
 		}
 		
 		return $sql;
-		
-		
+	}
+	
+	/**
+	 * Подготовить значение перед выполнение SQL запроса
+	 * 
+	 * @param string $value
+	 * @param string $func
+	 * @return string
+	 */
+	public static function prepare (string $value, $func) : string
+	{
+		return call_user_func($func, $value);
 	}
 
 	/**
@@ -253,7 +437,7 @@ SQL;
 	 * 
 	 * @param string $str
 	 */
-	private static function _identified(string $str)
+	private static function _check_identified(string $str)
 	{
 		if (ctype_alnum(str_replace("_", "", $str)) === false)
 		{
@@ -266,7 +450,7 @@ SQL;
 	 * 
 	 * @param string $str
 	 */
-	private static function _string(string $str)
+	private static function _check_string(string $str)
 	{
 		if (strpbrk($str, "\n\r\t\v\f") !== false)
 		{
@@ -289,7 +473,7 @@ SQL;
 	 * 
 	 * @param string $str
 	 */
-	private static function _text(string $str)
+	private static function _check_text(string $str)
 	{
 		if (strpbrk($str, "><") !== false)
 		{
@@ -302,7 +486,7 @@ SQL;
 	 * 
 	 * @param string $str
 	 */
-	private static function _html(string $str)
+	private static function _check_html(string $str)
 	{
 		$str = mb_strtolower($str);
 		if (mb_strpos($str, "<script") !== false)
@@ -316,7 +500,7 @@ SQL;
 	 * 
 	 * @param string $str
 	 */
-	private static function _int(string $str)
+	private static function _check_int(string $str)
 	{
 		if (!is_numeric($str))
 		{
@@ -334,9 +518,9 @@ SQL;
 	 * 
 	 * @param string $str
 	 */
-	private static function _uint(string $str)
+	private static function _check_uint(string $str)
 	{
-		self::_int($str);
+		self::_check_int($str);
 
 		$str = (int) $str;
 
@@ -351,7 +535,7 @@ SQL;
 	 * 
 	 * @param string $str
 	 */
-	private static function _boolean(string $str)
+	private static function _check_boolean(string $str)
 	{
 		if ($str !== "0" and $str !== "1")
 		{
@@ -364,7 +548,7 @@ SQL;
 	 * 
 	 * @param string $str
 	 */
-	private static function _email(string $str)
+	private static function _check_email(string $str)
 	{
 		if (!filter_var($str, FILTER_VALIDATE_EMAIL))
 		{
@@ -377,23 +561,15 @@ SQL;
 	 * 
 	 * @param string $str
 	 */
-	private static function _price(string $str)
+	private static function _check_price(string $str)
 	{
+		$str = str_replace(",", ".", $str);
+		
 		if (!is_numeric($str))
 		{
 			throw new Exception("Не является числом.");
 		}
 
-		if (strpos($str, ".") === false)
-		{
-			throw new Exception("Целое число.");
-		}
-
-		if (substr($str, -3, 1) !== ".")
-		{
-			throw new Exception("Необходимо две цифры после точки.");
-		}
-		
 		if ((int)$str !== abs((int)$str))
 		{
 			throw new Exception("Отрицательное число.");
@@ -405,7 +581,7 @@ SQL;
 	 * 
 	 * @param string $str
 	 */
-	private static function _date(string $str)
+	private static function _check_date(string $str)
 	{
 		if (strtotime($str) === false)
 		{
@@ -418,9 +594,9 @@ SQL;
 	 * 
 	 * @param string $str
 	 */
-	private static function _datetime(string $str)
+	private static function _check_datetime(string $str)
 	{
-		self::_date($str);
+		self::_check_date($str);
 	}
 
 	/**
@@ -428,7 +604,7 @@ SQL;
 	 * 
 	 * @param string $str
 	 */
-	private static function _url_part(string $str)
+	private static function _check_url_part(string $str)
 	{
 		/* В нижний регистра */
 		$str = mb_strtolower($str);
@@ -467,7 +643,7 @@ SQL;
 	 * 
 	 * @param string $str
 	 */
-	private static function _url_path(string $str)
+	private static function _check_url_path(string $str)
 	{
 		/* Срезаем символы слэша в начале и конце */
 		if (mb_substr($str, 0, 1) === "/")
@@ -484,7 +660,7 @@ SQL;
 		$str_ar = explode("/", $str);
 		foreach ($str_ar as $val)
 		{
-			self::_url_part($val);
+			self::_check_url_part($val);
 		}
 	}
 	
@@ -493,7 +669,7 @@ SQL;
 	 * 
 	 * @param string $str
 	 */
-	private static function _url(string $str)
+	private static function _check_url(string $str)
 	{
 		$parse_url = parse_url($str);
 		
@@ -509,12 +685,12 @@ SQL;
 		
 		if (!empty($parse_url['path']))
 		{
-			self::_url_path($parse_url['path']);
+			self::_check_url_path($parse_url['path']);
 		}
 		
 		if (!empty($parse_url['query']))
 		{
-			self::_string($parse_url['query']);
+			self::_check_string($parse_url['query']);
 		}
 	}
 
@@ -523,7 +699,7 @@ SQL;
 	 * 
 	 * @param string $str
 	 */
-	private static function _tags(string $str)
+	private static function _check_tags(string $str)
 	{
 		/* В нижний регистр */
 		$str = mb_strtolower($str);
@@ -580,7 +756,7 @@ SQL;
 	 * 
 	 * @param string $str
 	 */
-	private static function _path(string $str)
+	private static function _check_path(string $str)
 	{
 		/* Символ "." */
 		if ($str === "." or $str === "/")
@@ -628,7 +804,7 @@ SQL;
 	 * 
 	 * @param string $str
 	 */
-	private static function _ip(string $str)
+	private static function _check_ip(string $str)
 	{
 		if (!filter_var($str, FILTER_VALIDATE_IP))
 		{
@@ -637,13 +813,23 @@ SQL;
 	}
 	
 	/**
+	 * Последовательность (int DEFAULT nextval(SEQUENCE) PRIMARY)
+	 * 
+	 * @param string $str
+	 */
+	private static function _check_serial(string $str)
+	{
+		self::_check_uint($str);
+	}
+	
+	/**
 	 * Порядковые номер (int DEFAULT nextval(SEQUENCE) PRIMARY)
 	 * 
 	 * @param string $str
 	 */
-	private static function _id(string $str)
+	private static function _check_id(string $str)
 	{
-		self::_uint($str);
+		self::_check_uint($str);
 	}
 	
 	/**
@@ -651,9 +837,65 @@ SQL;
 	 * 
 	 * @param string $str
 	 */
-	private static function _order(string $str)
+	private static function _check_order(string $str)
 	{
-		self::_uint($str);
+		self::_check_uint($str);
+	}
+	
+	/**
+	 * JSON
+	 * 
+	 * @param string $json
+	 */
+	private static function _check_json (string $json)
+	{
+		if ($json !== "false" and json_decode($json, true) === false)
+		{
+			throw new Exception("Не прошёл валидацию.");
+		}
+	}
+
+	/**
+	 * Подготовить цену перед вставкой
+	 * 
+	 * @param string $str
+	 * @return string
+	 */
+	private static function _prepare_price (string $str) : string
+	{
+		return str_replace(",", ".", $str);
+	}
+	
+	/**
+	 * Привести дату к формату SQL
+	 * 
+	 * @param string $str
+	 * @return string
+	 */
+	private static function _prepare_date (string $str) : string
+	{
+		return date ("Y-m-d", strtotime($str));
+	}
+	
+	/**
+	 * Привести дату с временем к формату SQL
+	 * 
+	 * @param string $str
+	 * @return string
+	 */
+	private static function _prepare_datetime (string $str) : string
+	{
+		return date ("Y-m-d H:i:s", strtotime($str));
+	}
+	
+	/**
+	 * Подготовить булевое значение перед запросом
+	 * 
+	 * @param string $str
+	 */
+	private static function _prepare_boolean(string $str) : string
+	{
+		return (string)(int)$str;
 	}
 }
 ?>
