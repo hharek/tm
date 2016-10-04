@@ -49,6 +49,9 @@ try
 	
 	/* Выборка */
 	print_r(Category::select(["Parent" => null]));	/* Выборка корневых категорий */
+	
+	/* Посмотреть php-тип выборки */
+	var_dump(Product::select());
 }
 catch (Exception_Many $e)
 {

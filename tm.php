@@ -204,6 +204,17 @@ FROM
 WHERE
 	"{primary}" = \$1
 SQL
+,
+
+		"count" =>
+<<<SQL
+SELECT 
+	COUNT(*)
+FROM
+	"{table}"
+{where}
+SQL
+		
 	];
 	
 	/**
@@ -308,15 +319,19 @@ SQL;
 		$result = pg_query_params(self::$_db_conn, $query, [$primary]);
 		
 		/* Данные */
-		$data = pg_fetch_assoc($result);
-		if ($data === false)
+		$row = pg_fetch_assoc($result);
+		if ($row === false)
 		{
-			$data = [];
+			$row = [];
 		}
 		
+		/* Приводим значения к PHP-типу */
+		self::_convert_row_php_type($row);
+		
+		/* Освобождаем ресурс результата запроса */
 		pg_free_result($result);
 		
-		return $data;
+		return $row;
 	}
 	
 	/**
@@ -466,11 +481,92 @@ SQL;
 		{
 			$data = [];
 		}
+		
+		/* Приводим значения к PHP-типу */
+		foreach ($data as &$row)
+		{
+			self::_convert_row_php_type($row);
+		}
+		
+		/* Очищаем ресурс запроса */
 		pg_free_result($result);
 		
 		return $data;
 	}
 	
+	/**
+	 * Выборка всех «лёгких» полей
+	 * 
+	 * @param array $where
+	 * @param int $page
+	 * @param int $limit
+	 * @param array $order
+	 * @return array
+	 */
+	public static function selectl(array $where = [], int $page = 0, int $limit = 0, array $order = []) : array
+	{
+		/* Собираем данные */
+		static::_meta();
+		
+		/* Отбираем «легкие» поля */
+		$fieldl = [];
+		foreach (static::$_field as $f)
+		{
+			if (!isset($f['lite']) or $f['lite'] === true)
+			{
+				$fieldl[] = $f['identified'];
+			}
+		}
+		
+		/* Обычный select */
+		return static::select($where, $fieldl, $page, $limit, $order);
+	}
+	
+	/**
+	 * Вернуть кол-во строк
+	 * 
+	 * @param array $where
+	 * @return int
+	 */
+	public static function count(array $where = []) : int
+	{
+		/* Собираем данные */
+		static::_meta();
+		
+		/* WHERE */
+		$sql_where = ""; $where_info = [];
+		if (!empty($where))
+		{
+			$where_info = static::_data_info($where);
+			
+			$sql_where .= "WHERE\n";
+			static::check($where);
+			$param_num = 1;
+			foreach ($where_info as $f)
+			{
+				if ($param_num !== 1)
+				{
+					$sql_where .= " AND\n";
+				}
+				
+				$sql_where .= "\t" . TM_Type::get_sql_where($f, $param_num);
+				$param_num++;
+			}
+		}
+		
+		/* Подготавливаем значения */
+		$where_info = self::_prepare_values($where_info);
+		
+		/* Запрос */
+		$query = self::_get_sql(self::$_sql['count'], ["where" => $sql_where]);
+		$result = pg_query_params(self::$_db_conn, $query, array_column($where_info, "value"));
+		
+		$count = (int)pg_fetch_result($result, 0, 0);
+		pg_free_result($result);
+		
+		return $count;
+	}
+
 	/**
 	 * Проверка данных
 	 * 
@@ -1239,7 +1335,7 @@ SQL;
 					throw new Exception("Поле «" . static::$_table . ".{$f['identified']}». Foreign задан неверно. Параметр «field» задан неверно. " . TM_Type::get_last_error());
 				}
 				
-				if ($foreign['key'] and !TM_Type::check("identified", $foreign['key']))
+				if (isset($foreign['key']) and !TM_Type::check("identified", $foreign['key']))
 				{
 					throw new Exception("Поле «" . static::$_table . ".{$f['identified']}». Foreign задан неверно. Параметр «key» задан неверно. " . TM_Type::get_last_error());
 				}
@@ -1310,6 +1406,22 @@ SQL;
 				{
 					throw new Exception("Поле «" . static::$_table . ".{$f['identified']}». «seq_owned» задан неверно. Необходиом указать «true» или «false».");
 				}
+			}
+			
+			/* PHP-тип */
+			if (isset($f['php_type']))
+			{
+				$php_type = ["int", "integer", "bool", "boolean", "float", "double", "real", "string"];
+				if (!in_array($f['php_type'], $php_type))
+				{
+					throw new Exception("Поле «" . static::$_table . ".{$f['identified']}». «php_type» задан неверно. Допустимые значения: " . implode(", ", $php_type) . ".");
+				}
+			}
+			
+			/* Легкие поля */
+			if (isset($f['lite']) and !is_bool($f['lite']))
+			{
+				throw new Exception("Поле «" . static::$_table . ".{$f['identified']}». LITE задан неверно. Необходиом указать «true» или «false».");
 			}
 		}
 		
@@ -1610,6 +1722,58 @@ SQL;
 		}
 		
 		return $fdata;
+	}
+	
+	/**
+	 * Привести строку к PHP типу
+	 * 
+	 * @param array $row
+	 */
+	private static function _convert_row_php_type(array &$row)
+	{
+		foreach ($row as $key => $value)
+		{
+			list($identified, $php_type) = explode("|", $key);
+
+			if ($value !== null)
+			{
+				switch ($php_type)
+				{
+					case "int":
+					case "integer":
+					{
+						$row[$identified] = (int)$value;
+					}
+					break;
+
+					case "bool":
+					case "boolean":
+					{
+						$row[$identified] = (bool)$value;
+					}
+					break;
+
+					case "float":
+					case "double":
+					case "real":
+					{
+						$row[$identified] = (float)$value;
+					}
+					break;
+
+					default :
+					{
+						$row[$identified] = $value;
+					}
+				}
+			}
+			else
+			{
+				$row[$identified] = $value;
+			}
+
+			unset($row[$key]);
+		}
 	}
 }
 

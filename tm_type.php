@@ -32,27 +32,32 @@ class TM_Type
 		[
 			"sql_type" => "text",
 			"equal" => "ilike",
-			"null" => true
+			"null" => true,
+			"lite" => false
 		],
 		"html" => 
 		[
 			"sql_type" => "text",
 			"equal" => "ilike",
-			"null" => true
+			"null" => true,
+			"lite" => false
 		],
 		"int" => 
 		[
-			"sql_type" => "int"
+			"sql_type" => "int",
+			"php_type" => "int"
 		],
 		"uint" => 
 		[
-			"sql_type" => "int"
+			"sql_type" => "int",
+			"php_type" => "int"
 		],
 		"boolean" => 
 		[
 			"sql_type" => "boolean",
-			"sql_select" => "\"{identified}\"::int",
-			"prepare" => ["self", "_prepare_boolean"]
+			"sql_select" => "\"{identified}\"::int as \"{identified}|{php_type}\"",
+			"prepare" => ["self", "_prepare_boolean"],
+			"php_type" => "bool"
 		],
 		"email" => 
 		[
@@ -62,7 +67,8 @@ class TM_Type
 		"price" => 
 		[
 			"sql_type" => "numeric(10,2)",
-			"prepare" => ["self", "_prepare_price"]
+			"prepare" => ["self", "_prepare_price"],
+			"php_type" => "float"
 		],
 		"date" => 
 		[
@@ -97,7 +103,8 @@ class TM_Type
 			"sql_type" => "text",
 			"prepare" => "mb_strtolower",
 			"equal" => "like",
-			"null" => true
+			"null" => true,
+			"lite" => false
 		],
 		"path" => 
 		[
@@ -113,7 +120,8 @@ class TM_Type
 		[
 			"sql_type" => "int",
 			"sql_create" => "\"{identified}\" serial NOT NULL",
-			"require" => false
+			"require" => false,
+			"php_type" => "int"
 		],
 		"id" => 
 		[
@@ -122,14 +130,16 @@ class TM_Type
 			"seq_type" => "next",
 			"seq_owned" => true,
 			"primary" => true,
-			"require" => false
+			"require" => false,
+			"php_type" => "int"
 		],
 		"order" => 
 		[
 			"sql_type" => "int",
 			"seq" => "{table}_seq",
 			"seq_type" => "current",
-			"require" => false
+			"require" => false,
+			"php_type" => "int"
 		],
 		"enum" =>
 		[
@@ -140,7 +150,8 @@ class TM_Type
 		"json" => 
 		[
 			"sql_type" => "jsonb",
-			"null" => true
+			"null" => true,
+			"lite" => false
 		]
 	];
 	
@@ -352,12 +363,26 @@ class TM_Type
 	{
 		$type = $field['type'];
 		
-		$sql = "\"" . $field['identified'] . "\"";
-		
-		/* Свой SELECT */
-		if (isset(self::$_[$type]['sql_select']))
+		/* Добавляем к наименование */
+		$php_type = "string";
+		if (isset($field['php_type']))
 		{
-			$sql = str_replace("{identified}", $field['identified'], self::$_[$type]['sql_select']);
+			$php_type = $field['php_type'];
+		}
+		
+		$sql = 
+<<<SQL
+"{$field['identified']}" as "{$field['identified']}|{$php_type}"
+SQL;
+	
+		/* Свой SELECT */
+		if (isset($field['sql_select']))
+		{
+			$sql = strtr($field['sql_select'], 
+			[
+				"{identified}" => $field['identified'],
+				"{php_type}" => $field['php_type']
+			]);
 		}
 		
 		return $sql;
