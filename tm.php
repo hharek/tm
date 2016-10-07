@@ -214,7 +214,18 @@ FROM
 	"{table}"
 {where}
 SQL
-		
+,
+		"order" =>
+<<<SQL
+SELECT 
+	"{primary}", 
+	"{order}"
+FROM 
+	"{table}"
+{where}
+ORDER BY 
+	"{order}" ASC
+SQL
 	];
 	
 	/**
@@ -593,6 +604,12 @@ SQL;
 		/* Проверка */
 		foreach ($fdata as $f)
 		{
+			/* Не проверять */
+			if (isset($f['check']) and $f['check'] === false)
+			{
+				continue;
+			}
+			
 			/* NULL */
 			if ($f['value'] === null)
 			{
@@ -1184,6 +1201,103 @@ SQL;
 	}
 	
 	/**
+	 * Сортировка 
+	 * 
+	 * @param string $primary
+	 * @param string $order
+	 */
+	public static function order(string $primary, string $order)
+	{
+		/* Собираем данные */
+		static::_meta();
+		
+		/* Проверка */
+		static::is($primary);
+		if (!is_numeric($order) and !in_array($order, ["up","down"]))
+		{
+			throw new Exception("«" . static::$_name . "». Невозможно выполнить сортировку. Необходимо указать «up» или «down».");
+		}
+		
+		/* Находим поле с типом «order» и поле первичный ключ */
+		$field_primary = null; $field_order = null; 
+		foreach (static::$_field as $f)
+		{
+			if (isset($f['primary']) and $f['primary'] === true)
+			{
+				$field_primary = $f;
+				continue;
+			}
+			
+			if ($f['type'] === "order")
+			{
+				$field_order = $f;
+				continue;
+			}
+		}
+		
+		if (empty($field_order))
+		{
+			throw new Exception("«" . static::$_name . "». Невозможно выполнить сортировку. Отсутствует поле с типом «order».");
+		}
+		
+		/* WHERE */
+		$where = [];
+		if (isset($field_order['order_where']))
+		{
+			$filter = (array)$field_order['order_where'];
+			
+			$old = static::get($primary);
+			foreach ($filter as $identified)
+			{
+				$where[$identified] = $old[$identified];
+			}
+		}
+		
+		/* Выборка */
+		$other = static::select($where, [$field_primary['identified'], $field_order['identified']], 0, 0, [$field_order['identified'] => "asc"]);
+		if (count($other) < 2)
+		{
+			throw new Exception("«" . static::$_name . "». Невозможно выполнить сортировку. Необходимо хотя бы два элемента.");
+		}
+		
+		/* Определяем новые значения order */
+		foreach ($other as $key => $val)
+		{
+			if ((string)$val[$field_primary['identified']] === $primary)
+			{
+				break;
+			}
+		}
+		
+		if ($order === "up")
+		{
+			if ($key === 0)
+			{
+				throw new Exception("«" . static::$_name . "». Невозможно выполнить сортировку. Выше некуда.");
+			}
+
+			$primary_next = $other[$key - 1][$field_primary['identified']];
+			$order_int = $other[$key - 1][$field_order['identified']];
+			$order_int_next = $other[$key][$field_order['identified']];
+		}
+		elseif ($order === "down")
+		{
+			if ($key === count($other) - 1)
+			{
+				throw new Exception("«" . static::$_name . "». Невозможно выполнить сортировку. Ниже некуда.");
+			}
+
+			$primary_next = $other[$key + 1][$field_primary['identified']];
+			$order_int = $other[$key + 1][$field_order['identified']];
+			$order_int_next = $other[$key][$field_order['identified']];
+		}
+
+		/* Обновляем */
+		static::update([$field_order['identified'] => $order_int], $primary);
+		static::update([$field_order['identified'] => $order_int_next], $primary_next);
+	}
+
+	/**
 	 * Назначить ресурс подключения к БД
 	 * 
 	 * @param resource $resource
@@ -1198,6 +1312,10 @@ SQL;
 	 */
 	public static function check_struct()
 	{
+		/* Кол-во полей с типом «id» и «order» */
+		$type_id_count = 0;
+		$type_order_count = 0;
+		
 		foreach (static::$_field as $f)
 		{
 			/* Идентификатор */
@@ -1290,7 +1408,7 @@ SQL;
 					throw new Exception("Поле «" . static::$_table . ".{$f['identified']}». ORDER задан неверно. Необходимо указать «asc» или «desc».");
 				}
 			}
-
+			
 			/* UNIQUE */
 			if (isset($f['unique']) and !is_bool($f['unique']))
 			{
@@ -1421,7 +1539,47 @@ SQL;
 			/* Легкие поля */
 			if (isset($f['lite']) and !is_bool($f['lite']))
 			{
-				throw new Exception("Поле «" . static::$_table . ".{$f['identified']}». LITE задан неверно. Необходиом указать «true» или «false».");
+				throw new Exception("Поле «" . static::$_table . ".{$f['identified']}». «lite» задан неверно. Необходиом указать «true» или «false».");
+			}
+			
+			/* Делать ли проверку */
+			if (isset($f['check']) and !is_bool($f['check']))
+			{
+				throw new Exception("Поле «" . static::$_table . ".{$f['identified']}». «check» задан неверно. Необходиом указать «true» или «false».");
+			}
+			
+			/* Type «id» */
+			if ($f['type'] === "id")
+			{
+				if ($type_id_count > 0)
+				{
+					throw new Exception("Таблица «" . static::$_table . "». Поле с типом «id» должно быть только одно.");
+				}
+				
+				$type_id_count++;
+			}
+			
+			/* Type «order» */
+			if ($f['type'] === "order")
+			{
+				if (isset($f['order_where']))
+				{
+					$f['order_where'] = (array)$f['order_where'];
+					foreach ($f['order_where'] as $identified)
+					{
+						if (!in_array($identified, array_column(static::$_field, "identified")))
+						{
+							throw new Exception("Поле «" . static::$_table . ".{$f['identified']}». «order_where» задан неверно. Отсутствует поле «{$identified}».");
+						}
+					}
+				}
+				
+				if ($type_order_count > 0)
+				{
+					throw new Exception("Таблица «" . static::$_table . "». Поле с типом «order» должно быть только одно.");
+				}
+				
+				$type_order_count++;
 			}
 		}
 		
@@ -1760,7 +1918,7 @@ SQL;
 						$row[$identified] = (float)$value;
 					}
 					break;
-
+				
 					default :
 					{
 						$row[$identified] = $value;

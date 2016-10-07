@@ -139,7 +139,8 @@ class TM_Type
 			"seq" => "{table}_seq",
 			"seq_type" => "current",
 			"require" => false,
-			"php_type" => "int"
+			"php_type" => "int",
+			"order" => "asc"
 		],
 		"enum" =>
 		[
@@ -220,7 +221,7 @@ class TM_Type
 		
 		return true;
 	}
-
+	
 	/**
 	 * Текст последней ошибки
 	 * 
@@ -361,8 +362,6 @@ class TM_Type
 	 */
 	public static function get_sql_select(array $field) : string
 	{
-		$type = $field['type'];
-		
 		/* Добавляем к наименование */
 		$php_type = "string";
 		if (isset($field['php_type']))
@@ -868,13 +867,13 @@ SQL;
 	}
 	
 	/**
-	 * JSON
+	 * JSON-закодированная строка
 	 * 
-	 * @param string $json
+	 * @param string $str
 	 */
-	private static function _check_json (string $json)
+	private static function _check_json(string $str)
 	{
-		if ($json !== "false" and json_decode($json, true) === false)
+		if (strtolower($str) !== "null" and json_decode($str) === null)
 		{
 			throw new Exception("Не прошёл валидацию.");
 		}

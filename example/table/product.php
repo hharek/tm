@@ -70,6 +70,12 @@ class Product extends TM
 			"unique_key" => ["UN_Name", "UN_Url"]
 		],
 		[
+			"identified" => "Sort",
+			"name" => "Сортировка",
+			"type" => "order",
+			"order_where" => "Category_ID"
+		],
+		[
 			"identified" => "Active",
 			"name" => "Активность",
 			"type" => "boolean",

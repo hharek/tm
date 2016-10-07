@@ -1,3 +1,5 @@
+DROP TABLE IF EXISTS "category" CASCADE;
+
 CREATE SEQUENCE "category_seq" RESTART;
 
 CREATE TABLE "category"

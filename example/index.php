@@ -7,7 +7,8 @@ require "../tm_type.php";
 require "table/category.php";
 require "table/product.php";
 
-$db = pg_connect("host=127.0.0.1 port=5432 dbname=example user=example password=pass");
+//$db = pg_connect("host=127.0.0.1 port=5432 dbname=example user=example password=pass");
+$db = pg_connect("host=127.0.0.1 port=5432 dbname=odin user=odin password=111");
 TM::set_db_conn($db);
 
 try
@@ -39,6 +40,9 @@ try
 	
 	/* DELETE */
 	$c5_delete = Category::delete($c5['ID']);
+	
+	/* Сортировка вверх */
+	Product::order($t3['ID'], "up");
 	
 	/* Проверка по перичному ключу */
 	var_dump(Category::is(1, false));		/* bool(true) */
