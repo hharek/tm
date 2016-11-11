@@ -2,12 +2,10 @@
 header("Content-type: text/plain; charset=UTF-8");
 
 require "../tm.php";
-require "../tm_ftype.php";
+require "../tm_type.php";
 
 require "table/category.php";
-require "table/tovar.php";
-require "table/group.php";
-require "table/user.php";
+require "table/product.php";
 
 $db = pg_connect("host=127.0.0.1 port=5432 dbname=example user=example password=pass");
 TM::set_db_conn($db);

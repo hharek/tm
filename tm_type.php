@@ -20,139 +20,145 @@ class TM_Type
 	[
 		"identified" => 
 		[
-			"sql_type" => "varchar(127)",
-			"prepare" => "strtolower"
+			"sql_type"	=> "varchar(127)",
+			"prepare"	=> "strtolower"
 		],
 		"string" => 
 		[
-			"sql_type" => "varchar(255)",
-			"equal" => "ilike"
+			"sql_type"	=> "varchar(255)",
+			"equal"		=> "ilike"
 		],
 		"text" => 
 		[
-			"sql_type" => "text",
-			"equal" => "ilike",
-			"null" => true,
-			"lite" => false
+			"sql_type"	=> "text",
+			"equal"		=> "ilike",
+			"null"		=> true,
+			"lite"		=> false
 		],
 		"html" => 
 		[
-			"sql_type" => "text",
-			"equal" => "ilike",
-			"null" => true,
-			"lite" => false
+			"sql_type"	=> "text",
+			"equal"		=> "ilike",
+			"null"		=> true,
+			"lite"		=> false
 		],
 		"int" => 
 		[
-			"sql_type" => "int",
-			"php_type" => "int"
+			"sql_type"	=> "int",
+			"php_type"	=> "int"
 		],
 		"uint" => 
 		[
-			"sql_type" => "int",
-			"php_type" => "int"
+			"sql_type"	=> "int",
+			"php_type"	=> "int"
 		],
 		"boolean" => 
 		[
-			"sql_type" => "boolean",
-			"sql_select" => "\"{identified}\"::int as \"{identified}|{php_type}\"",
-			"prepare" => ["self", "_prepare_boolean"],
-			"php_type" => "bool"
+			"sql_type"		=> "boolean",
+			"sql_select"	=> "\"{identified}\"::int as \"{identified}|{php_type}\"",
+			"prepare"		=> ["self", "_prepare_boolean"],
+			"php_type"		=> "bool"
 		],
 		"email" => 
 		[
-			"sql_type" => "varchar(127)",
-			"prepare" => "strtolower"
+			"sql_type"	=> "varchar(127)",
+			"prepare"	=> "strtolower"
 		],
 		"price" => 
 		[
-			"sql_type" => "numeric(10,2)",
-			"prepare" => ["self", "_prepare_price"],
-			"php_type" => "float"
+			"sql_type"	=> "numeric(10,2)",
+			"prepare"	=> ["self", "_prepare_price"],
+			"php_type"	=> "float"
 		],
 		"date" => 
 		[
-			"sql_type" => "date",
-			"prepare" => ["self", "_prepare_date"]
+			"sql_type"	=> "date",
+			"prepare"	=> ["self", "_prepare_date"]
 		],
 		"datetime" => 
 		[
-			"sql_type" => "timestamp",
-			"prepare" => ["self", "_prepare_datetime"]
+			"sql_type"	=> "timestamp",
+			"prepare"	=> ["self", "_prepare_datetime"]
 		],
 		"url_part" => 
 		[
-			"sql_type" => "varchar(255)",
-			"prepare" => "mb_strtolower",
-			"equal" => "like"
+			"sql_type"	=> "varchar(255)",
+			"prepare"	=> "mb_strtolower",
+			"equal"		=> "like"
 		],
 		"url_path" => 
 		[
-			"sql_type" => "varchar(255)",
-			"prepare" => "mb_strtolower",
-			"equal" => "like"
+			"sql_type"	=> "varchar(255)",
+			"prepare"	=> "mb_strtolower",
+			"equal"		=> "like"
 		],
 		"url" => 
 		[
-			"sql_type" => "varchar(255)",
-			"prepare" => "mb_strtolower",
-			"equal" => "like"
+			"sql_type"	=> "varchar(255)",
+			"prepare"	=> "mb_strtolower",
+			"equal"		=> "like"
 		],
 		"tags" => 
 		[
-			"sql_type" => "text",
-			"prepare" => "mb_strtolower",
-			"equal" => "like",
-			"null" => true,
-			"lite" => false
+			"sql_type"	=> "text",
+			"prepare"	=> "mb_strtolower",
+			"equal"		=> "like",
+			"null"		=> true,
+			"lite"		=> false
 		],
 		"path" => 
 		[
-			"sql_type" => "varchar(255)",
-			"prepare" => "mb_strtolower",
-			"equal" => "like"
+			"sql_type"	=> "varchar(255)",
+			"prepare"	=> "mb_strtolower",
+			"equal"		=> "like"
 		],
 		"ip" => 
 		[
-			"sql_type" => "varchar(15)"
+			"sql_type"	=> "varchar(15)"
 		],
 		"serial" => 
 		[
-			"sql_type" => "int",
-			"sql_create" => "\"{identified}\" serial NOT NULL",
-			"require" => false,
-			"php_type" => "int"
+			"sql_type"		=> "int",
+			"sql_create"	=> "\"{identified}\" serial NOT NULL",
+			"require"		=> false,
+			"php_type"		=> "int"
 		],
 		"id" => 
 		[
-			"sql_type" => "int",
-			"seq" => "{table}_seq",
-			"seq_type" => "next",
-			"seq_owned" => true,
-			"primary" => true,
-			"require" => false,
-			"php_type" => "int"
+			"sql_type"	=> "int",
+			"seq"		=> "{table}_seq",
+			"seq_type"	=> "next",
+			"seq_owned"	=> true,
+			"primary"	=> true,
+			"require"	=> false,
+			"php_type"	=> "int"
 		],
 		"order" => 
 		[
-			"sql_type" => "int",
-			"seq" => "{table}_seq",
-			"seq_type" => "current",
-			"require" => false,
-			"php_type" => "int",
-			"order" => "asc"
+			"sql_type"	=> "int",
+			"seq"		=> "{table}_seq",
+			"seq_type"	=> "current",
+			"require"	=> false,
+			"php_type"	=> "int",
+			"order"		=> "asc"
 		],
 		"enum" =>
 		[
-			"sql_type" => "varchar(255)",
-			"sql_constraint" => "CONSTRAINT \"{table}_{identified}_check\" CHECK (\"{identified}\" IN ({enum_values}))",
-			"equal" => "like"
+			"sql_type"			=> "varchar(255)",
+			"sql_constraint"	=> "CONSTRAINT \"{table}_{identified}_check\" CHECK (\"{identified}\" IN ({enum_values}))",
+			"equal"				=> "like"
 		],
 		"json" => 
 		[
-			"sql_type" => "jsonb",
-			"null" => true,
-			"lite" => false
+			"sql_type"	=> "jsonb",
+			"null"		=> true,
+			"lite"		=> false
+		],
+		"last_modified" => 
+		[
+			"sql_type"		=> "timestamp",
+			"sql_default"	=> "now()",
+			"require"		=> false
 		]
 	];
 	
@@ -256,11 +262,12 @@ class TM_Type
 	/**
 	 * Получить SQL для запроса CREATE 
 	 * 
+	 * @param string $schema
 	 * @param string $table
 	 * @param array $field
 	 * @return string
 	 */
-	public static function get_sql_create(string $table, array $field) : string
+	public static function get_sql_create(string $schema, string $table, array $field) : string
 	{
 		/* Имя счётчика */
 		$seq = "";
@@ -269,7 +276,7 @@ class TM_Type
 			$seq = strtr($field['seq'], 
 			[
 				"{identified}" => $field['identified'],
-				"{table}" => $table
+				"{table}" => $schema . "." . $table
 			]);
 			$seq = strtolower($seq);
 		}
@@ -308,30 +315,13 @@ class TM_Type
 		/* DEFAULT */
 		$data['{default}'] = "";
 		
-		if (!isset($field['seq']))
+		/* Указан «sql_default» */
+		if (isset($field['sql_default']))
 		{
-			if (array_key_exists('default', $field))
-			{
-				if (is_string($field['default']))
-				{
-					$data['{default}'] = " DEFAULT '" . $field['default'] . "'";
-				}
-				elseif (is_int($field['default']) or is_float($field['default']))
-				{
-					$data['{default}'] = " DEFAULT " . $field['default'];
-				}
-				elseif (is_bool($field['default']))
-				{
-					$field['default'] = $field['default'] ? "true" : "false";
-					$data['{default}'] = " DEFAULT " . $field['default'];
-				}
-				elseif ($field['default'] === null)
-				{
-					$data['{default}'] = " DEFAULT NULL";
-				}
-			}
+			$data['{default}'] = " DEFAULT {$field['sql_default']}";
 		}
-		else
+		/* Указан «seq». Поле является счётчиком */
+		elseif (isset($field['seq']))
 		{
 			$seq_type = "next";
 			if (isset($field['seq_type']))
@@ -348,7 +338,29 @@ class TM_Type
 				$data['{default}'] = str_replace("{seq}", $seq, " DEFAULT currval('{seq}')");
 			}
 		}
+		/* Указан «default» */
+		elseif (array_key_exists('default', $field))
+		{
+			if (is_string($field['default']))
+			{
+				$data['{default}'] = " DEFAULT '" . $field['default'] . "'";
+			}
+			elseif (is_int($field['default']) or is_float($field['default']))
+			{
+				$data['{default}'] = " DEFAULT " . $field['default'];
+			}
+			elseif (is_bool($field['default']))
+			{
+				$field['default'] = $field['default'] ? "true" : "false";
+				$data['{default}'] = " DEFAULT " . $field['default'];
+			}
+			elseif ($field['default'] === null)
+			{
+				$data['{default}'] = " DEFAULT NULL";
+			}
+		}
 		
+		/* Подстановка */
 		$sql = strtr($sql, $data);
 		
 		return $sql;
@@ -916,8 +928,9 @@ SQL;
 	 * Подготовить булевое значение перед запросом
 	 * 
 	 * @param string $str
+	 * @return string
 	 */
-	private static function _prepare_boolean(string $str) : string
+	private static function _prepare_boolean (string $str) : string
 	{
 		return (string)(int)$str;
 	}

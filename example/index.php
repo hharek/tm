@@ -7,8 +7,7 @@ require "../tm_type.php";
 require "table/category.php";
 require "table/product.php";
 
-//$db = pg_connect("host=127.0.0.1 port=5432 dbname=example user=example password=pass");
-$db = pg_connect("host=127.0.0.1 port=5432 dbname=odin user=odin password=111");
+$db = pg_connect("host=127.0.0.1 port=5432 dbname=example user=example password=pass");
 TM::set_db_conn($db);
 
 try
