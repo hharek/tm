@@ -1,6 +1,13 @@
 <?php
 /**
- * Table Manager. Field Type - Типы полей таблицы
+ * Генератор SQL-запросов для таблиц в СУБД PostgreSQL. Типы полей таблицы
+ * 
+ * @category	Databases
+ * @author		Sergeev Denis <hharek@yandex.ru>
+ * @copyright	2016 Sergeev Denis
+ * @license		MIT
+ * @version		1.5.1
+ * @link		https://github.com/hharek/tm
  */
 class TM_Type
 {
