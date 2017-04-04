@@ -9,21 +9,21 @@ class Category extends TM
 	 * 
 	 * @var string
 	 */
-	protected static $_table = "category";
+	public static $table = "category";
 	
 	/**
 	 * Наименование
 	 * 
 	 * @var string
 	 */
-	protected static $_name = "Категория";
+	public static $name = "Категория";
 
 	/**
 	 * Поля
 	 * 
 	 * @var array
 	 */
-	protected static $_field = 
+	public static $fields = 
 	[
 		[
 			"identified" => "ID",

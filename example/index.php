@@ -50,11 +50,14 @@ try
 	/* Выборка по первичному ключу */
 	print_r(Category::get(3));
 	
-	/* Выборка */
-	print_r(Category::select(["Parent" => null]));	/* Выборка корневых категорий */
+	/* Выборка корневых категорий. Преобразуется в IS NULL */
+	print_r(Category::select(["Parent" => null]));
 	
 	/* Посмотреть php-тип выборки */
 	var_dump(Product::select());
+	
+	/* Делам SELECT через оператор LIKE */
+	print_r(Product::select(["Name" => ["like", "%вар_3%"]]));
 }
 catch (Exception_Many $e)
 {

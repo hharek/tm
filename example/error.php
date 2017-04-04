@@ -19,8 +19,7 @@ try
 		"Url" => "кате < гория-1 >"
 	];
 	
-	
-	Category::check($data);			
+	Category::check($data);	
 /*
 Exception_Many: 
 Array

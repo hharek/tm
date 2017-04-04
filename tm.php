@@ -5,39 +5,39 @@
 class TM
 {
 	/**
-	 * Ресурс подключения к БД
-	 * 
-	 * @var resource
-	 */
-	protected static $_db_conn;
-	
-	/**
 	 * Наименование схемы
 	 * 
 	 * @var string
 	 */
-	protected static $_schema = "public";
+	public static $schema = "public";
 
 	/**
 	 * Наименование таблицы
 	 * 
 	 * @var string
 	 */
-	protected static $_table;
+	public static $table;
 	
 	/**
 	 * Наименование сущности
 	 * 
 	 * @var string
 	 */
-	protected static $_name;
+	public static $name;
 
 	/**
 	 * Поля
 	 * 
 	 * @var array
 	 */
-	protected static $_field = [];
+	public static $fields = [];
+	
+	/**
+	 * Ресурс подключения к БД
+	 * 
+	 * @var resource
+	 */
+	protected static $_db_conn;
 	
 	/**
 	 * Первичные ключи таблиц
@@ -247,6 +247,19 @@ SQL
 	protected static $_meta = [];
 	
 	/**
+	 * Доступные выражения для оператора WHERE
+	 * 
+	 * @var array
+	 */
+	protected static $_where_operator = 
+	[
+		"=", "!=", "<>", 
+		"like", "not like", "ilike", "not ilike",
+		"in", "not in", 
+		">", ">=", "<", "<="
+	];
+	
+	/**
 	 * Проверка на существование по первичному ключу
 	 * 
 	 * @param string $primary
@@ -272,7 +285,7 @@ SQL
 		}
 		
 		/* SQL */
-		$query = self::_get_sql(self::$_sql['is'], 
+		$query = static::_get_sql(self::$_sql['is'], 
 		[
 			"column" => self::$_primary[static::_table()]['identified']
 		]);
@@ -285,7 +298,7 @@ SQL
 		{
 			if ($exception)
 			{
-				throw new Exception("«" . static::$_name . "» с полем «" . self::$_primary[static::_table()]['identified'] . "» = «" . $primary . "» отсутствует.");
+				throw new Exception("«" . static::$name . "» с полем «" . self::$_primary[static::_table()]['identified'] . "» = «" . $primary . "» отсутствует.");
 			}
 			else
 			{
@@ -312,7 +325,7 @@ SQL
 		
 		/* Формируем запрос */
 		$field = "";
-		foreach (static::$_field as $key => $f)
+		foreach (static::$fields as $key => $f)
 		{
 			/* Запятая */
 			if ($key !== 0)
@@ -324,7 +337,7 @@ SQL
 		}
 		
 		/* Основной запрос */
-		$query = self::_get_sql(self::$_sql['get'], 
+		$query = static::_get_sql(self::$_sql['get'], 
 		[
 			"field" => $field,
 			"column" => self::$_primary[static::_table()]['identified']
@@ -341,7 +354,7 @@ SQL
 		}
 		
 		/* Приводим значения к PHP-типу */
-		self::_convert_row_php_type($row);
+		static::_convert_row_php_type($row);
 		
 		/* Освобождаем ресурс результата запроса */
 		pg_free_result($result);
@@ -369,20 +382,7 @@ SQL
 		if (!empty($where))
 		{
 			$where_info = static::_data_info($where);
-			
-			$sql_where .= "WHERE\n";
-			static::check($where);
-			$param_num = 1;
-			foreach ($where_info as $f)
-			{
-				if ($param_num !== 1)
-				{
-					$sql_where .= " AND\n";
-				}
-				
-				$sql_where .= "\t" . TM_Type::get_sql_where($f, $param_num);
-				$param_num++;
-			}
+			$sql_where = static::_sql_where($where);
 		}
 		
 		/* Колонки для выборки */
@@ -394,7 +394,7 @@ SQL
 			}
 			
 			/* Существуют ли указанные колонки */
-			$tm_identified = array_column(static::$_field, "identified");
+			$tm_identified = array_column(static::$fields, "identified");
 			foreach ($field as $identified)
 			{
 				if (!in_array($identified, $tm_identified))
@@ -406,7 +406,7 @@ SQL
 		/* Колонки для выборки. По умолчанию все */
 		else
 		{
-			$field = array_column(static::$_field, "identified");
+			$field = array_column(static::$fields, "identified");
 		}
 		
 		/* SQL для полей */
@@ -430,7 +430,7 @@ SQL
 		/* Order */
 		if (!empty($order))
 		{
-			$tm_identified = array_column(static::$_field, "identified");
+			$tm_identified = array_column(static::$fields, "identified");
 			foreach ($order as $identified => $value)
 			{
 				if (!in_array($identified, $tm_identified))
@@ -477,7 +477,7 @@ SQL
 		}
 		
 		/* Формируем запрос */
-		$query = self::_get_sql(self::$_sql['select'], 
+		$query = static::_get_sql(self::$_sql['select'], 
 		[
 			"field" => $sql_field,
 			"where" => $sql_where,
@@ -486,7 +486,7 @@ SQL
 		]);
 		
 		/* Подготовим значения WHERE */
-		$where_info = self::_prepare_values($where_info);
+		$where_info = static::_prepare_where_values($where_info);
 		$values = array_column($where_info, "value");
 		
 		/* Запрос */
@@ -500,7 +500,7 @@ SQL
 		/* Приводим значения к PHP-типу */
 		foreach ($data as &$row)
 		{
-			self::_convert_row_php_type($row);
+			static::_convert_row_php_type($row);
 		}
 		
 		/* Очищаем ресурс запроса */
@@ -525,7 +525,7 @@ SQL
 		
 		/* Отбираем «легкие» поля */
 		$fieldl = [];
-		foreach (static::$_field as $f)
+		foreach (static::$fields as $f)
 		{
 			if (!isset($f['lite']) or $f['lite'] === true)
 			{
@@ -553,27 +553,14 @@ SQL
 		if (!empty($where))
 		{
 			$where_info = static::_data_info($where);
-			
-			$sql_where .= "WHERE\n";
-			static::check($where);
-			$param_num = 1;
-			foreach ($where_info as $f)
-			{
-				if ($param_num !== 1)
-				{
-					$sql_where .= " AND\n";
-				}
-				
-				$sql_where .= "\t" . TM_Type::get_sql_where($f, $param_num);
-				$param_num++;
-			}
+			$sql_where = static::_sql_where($where);
 		}
 		
 		/* Подготавливаем значения */
-		$where_info = self::_prepare_values($where_info);
+		$where_info = static::_prepare_where_values($where_info);
 		
 		/* Запрос */
-		$query = self::_get_sql(self::$_sql['count'], ["where" => $sql_where]);
+		$query = static::_get_sql(self::$_sql['count'], ["where" => $sql_where]);
 		$result = pg_query_params(self::$_db_conn, $query, array_column($where_info, "value"));
 		
 		$count = (int)pg_fetch_result($result, 0, 0);
@@ -608,93 +595,9 @@ SQL
 		/* Проверка */
 		foreach ($fdata as $f)
 		{
-			/* Не проверять */
-			if (isset($f['check']) and $f['check'] === false)
-			{
-				continue;
-			}
-			
-			/* NULL */
-			if ($f['value'] === null)
-			{
-				if (isset($f['null']) and $f['null'] === true)
-				{
-					continue;
-				}
-				else
-				{
-					throw new Exception("Поле «{$f['name']}» не может быть задано как «NULL».");
-				}
-			}
-			
-			/* Не является строкой */
-			if (!is_scalar($f['value']))
-			{
-				$error = "Поле «{$f['name']}» задано неверно. Не является строкой.";
-				if ($exception_many)
-				{
-					$err[$f['identified']] = $error;
-					continue;
-				}
-				else
-				{
-					throw new Exception($error);
-				}
-			}
-			
-			/* Преобразуем в строку */
-			if (is_bool($f['value'])) 
-			{
-				$f['value'] = (string)(int)$f['value'];
-			}
-			else
-			{
-				$f['value'] = (string)$f['value'];
-			}
-			
-			/* Пустое значение */
-			if (trim($f['value']) === "")
-			{
-				/* Не обязательно для заполения */
-				if (isset($f['empty_allow']) and $f['empty_allow'] === true)
-				{
-					continue;
-				}
-				/* Обязательно для заполнения */
-				else
-				{
-					$error = "«" . static::$_name . "». Поле «{$f['name']}» не заполнено.";
-					if ($exception_many)
-					{
-						$err[$f['identified']] = $error;
-						continue;
-					}
-					else
-					{
-						throw new Exception($error);
-					}	
-				}
-			}
-			
-			/* Проверяем на соответствие типу */
-			if 
-			(
-				($f['type'] !== "enum" and !TM_Type::check($f['type'], $f['value'])) or
-				($f['type'] === "enum" and !TM_Type::check_enum($f['value'], $f['enum_values'])) 
-			)
-			{
-				$error = "Поле «{$f['name']}» задано неверно. " . TM_Type::get_last_error();
-				if ($exception_many)
-				{
-					$err[$f['identified']] = $error;
-					continue;
-				}
-				else
-				{
-					throw new Exception($error);
-				}
-			}
+			static::_check_field($f, $err, $exception_many);
 		}
+		unset($f);
 		
 		if (!empty($err))
 		{
@@ -739,18 +642,18 @@ SQL
 				$where .= " AND\n\t";
 			}
 			
-			$where .= TM_Type::get_sql_where($f, $num);
+			$where .= TM_Type::get_sql_where_unique($f, $num);
 			$num++;
 		}
 		
 		/* PRIMARY */
 		if (!empty($primary))
 		{
-			$where .= " AND\n\t" . TM_Type::get_sql_where(self::$_primary[static::_table()], $num, true);
+			$where .= " AND\n\t" . TM_Type::get_sql_where_unique(self::$_primary[static::_table()], $num, true);
 		}
 
 		/* SQL */
-		$query = self::_get_sql(self::$_sql['unique'], ["where" => $where]);
+		$query = static::_get_sql(self::$_sql['unique'], ["where" => $where]);
 		
 		/* Запрос */
 		$values = array_values($data);
@@ -767,7 +670,7 @@ SQL
 		if ($count > 0)
 		{
 			/* Текст ошибки */
-			$error = "«" . static::$_name . "» с полем «{$fdata[0]['name']}» : «{$fdata[0]['value']}» уже существует.";
+			$error = "«" . static::$name . "» с полем «{$fdata[0]['name']}» : «{$fdata[0]['value']}» уже существует.";
 			if (!$exception)
 			{
 				return [$fdata[0]['identified'] => $error];
@@ -795,7 +698,7 @@ SQL
 		static::check($data);
 		
 		/* Поля обязательные при вставке */
-		foreach (static::$_field as $f)
+		foreach (static::$fields as $f)
 		{
 			if 
 			(
@@ -803,7 +706,7 @@ SQL
 				!in_array($f['identified'], array_keys($data))
 			)
 			{
-				throw new Exception("«" . static::$_name . "». Отсутствует поле «{$f['identified']}» обязательное при вставке.");
+				throw new Exception("«" . static::$name . "». Отсутствует поле «{$f['identified']}» обязательное при вставке.");
 			}
 		}
 		
@@ -855,7 +758,7 @@ SQL
 			$num++;
 		}
 		
-		$query = self::_get_sql(self::$_sql['insert'], 
+		$query = static::_get_sql(self::$_sql['insert'], 
 		[
 			"field" => '"' . implode('", "', array_keys($data)) . '"',
 			"values_num" => '$' . implode(', $', $values_num),
@@ -870,7 +773,7 @@ SQL
 		$result = pg_query_params(self::$_db_conn, $query, array_column($fdata, "value"));
 		if ($result === false)
 		{
-			throw new Exception("«" . static::$_name . "». Не удалось вставить данные. " . pg_last_error(self::$_db_conn));
+			throw new Exception("«" . static::$name . "». Не удалось вставить данные. " . pg_last_error(self::$_db_conn));
 		}
 		
 		$row = pg_fetch_row($result);
@@ -973,7 +876,7 @@ SQL
 			$num++;
 		}
 		
-		$query = self::_get_sql(self::$_sql['update'], 
+		$query = static::_get_sql(self::$_sql['update'], 
 		[
 			"field" => $field,
 			"primary" => self::$_primary[static::_table()]['identified'],
@@ -981,7 +884,7 @@ SQL
 		]);
 		
 		/* Подготовим значения */
-		$fdata = self::_prepare_values($fdata);
+		$fdata = static::_prepare_values($fdata);
 		
 		/* Запрос */
 		$values = array_column($fdata, "value");
@@ -990,7 +893,7 @@ SQL
 		$result = pg_query_params(self::$_db_conn, $query, $values);
 		if ($result === false)
 		{
-			throw new Exception("«" . static::$_name . "». Не удалось обновить данные. " . pg_last_error(self::$_db_conn));
+			throw new Exception("«" . static::$name . "». Не удалось обновить данные. " . pg_last_error(self::$_db_conn));
 		}
 		pg_free_result($result);
 		
@@ -1010,16 +913,16 @@ SQL
 		static::_meta();
 		
 		/* Старые данные */
-		$old = self::get($primary);
+		$old = static::get($primary);
 		
 		/* SQL */
-		$query = self::_get_sql(self::$_sql['delete'], ["primary" => self::$_primary[static::_table()]['identified']]);
+		$query = static::_get_sql(self::$_sql['delete'], ["primary" => self::$_primary[static::_table()]['identified']]);
 		
 		/* Запрос */
 		$result = pg_query_params(self::$_db_conn, $query, [$primary]);
 		if ($result === false)
 		{
-			throw new Exception("«" . static::$_name . "». Не удалось удалить данные. " . pg_last_error(self::$_db_conn));
+			throw new Exception("«" . static::$name . "». Не удалось удалить данные. " . pg_last_error(self::$_db_conn));
 		}
 		pg_free_result($result);
 		
@@ -1042,7 +945,7 @@ SQL
 		$drop_table = "";
 		if ($drop_if_exist)
 		{
-			$drop_table = self::_get_sql(self::$_sql['drop_table']);
+			$drop_table = static::_get_sql(self::$_sql['drop_table']);
 		}
 		
 		/* Счётчики */
@@ -1051,17 +954,17 @@ SQL
 		{
 			foreach (self::$_seq[static::_table()] as $seq)
 			{
-				$sequence_create .= self::_get_sql(self::$_sql['sequence_create'], 
+				$sequence_create .= static::_get_sql(self::$_sql['sequence_create'], 
 				[
-					"schema" => static::$_schema,
+					"schema" => static::$schema,
 					"identified" => strtolower($seq['identified'])
 				]);
 				
 				if ($seq['owned'] === true)
 				{
-					$sequence_owned .= self::_get_sql(self::$_sql['sequence_owned'], 
+					$sequence_owned .= static::_get_sql(self::$_sql['sequence_owned'], 
 					[
-						"schema" => static::$_schema,
+						"schema" => static::$schema,
 						"identified" => strtolower($seq['identified']),
 						"field" => $seq['field']
 					]);
@@ -1071,7 +974,7 @@ SQL
 		
 		/* Поля */
 		$field = "\t";
-		foreach (static::$_field as $key => $f)
+		foreach (static::$fields as $key => $f)
 		{
 			/* Запятая */
 			if ($key !== 0)
@@ -1079,7 +982,7 @@ SQL
 				$field .= ",\n\t";
 			}
 			
-			$field .= TM_Type::get_sql_create(static::$_schema, static::$_table, $f);
+			$field .= TM_Type::get_sql_create(static::$schema, static::$table, $f);
 		}
 		
 		/* PRIMARY */
@@ -1090,7 +993,7 @@ SQL
 			(
 				self::$_sql['constraint_primary'], 
 				[
-					"table" => static::$_table,
+					"table" => static::$table,
 					"field" => self::$_primary[static::_table()]['identified']
 				]
 			);
@@ -1110,7 +1013,7 @@ SQL
 				{
 					$unique .= self::_get_sql(self::$_sql['index_unique'], 
 					[
-						"table_name" => static::$_table,
+						"table_name" => static::$table,
 						"key" => $key,
 						"field" => '"' . implode('", "', array_column($field_un, "identified")) . '"'
 					]);
@@ -1130,7 +1033,7 @@ SQL
 							
 							$unique .= self::_get_sql(self::$_sql['index_unique_null'], 
 							[
-								"table_name" => static::$_table,
+								"table_name" => static::$table,
 								"key" => "UN" . $num,
 								"field" => $f['identified'],
 								"field_all" => '"' . implode('", "', array_column($field_un, "identified")) . '"',
@@ -1175,14 +1078,14 @@ SQL
 		
 		/* COMMENT TABLE */
 		$comment_table = "";
-		if (!empty(static::$_name))
+		if (!empty(static::$name))
 		{
-			$comment_table .= self::_get_sql(self::$_sql['comment_table'], ['name' => pg_escape_string(static::$_name)]);
+			$comment_table .= self::_get_sql(self::$_sql['comment_table'], ['name' => pg_escape_string(static::$name)]);
 		}
 		
 		/* COMMENT COLUMN */
 		$comment_column = "";
-		foreach (static::$_field as $f)
+		foreach (static::$fields as $f)
 		{
 			if (!empty($f['name']))
 			{
@@ -1236,12 +1139,12 @@ SQL
 		static::is($primary);
 		if (!is_numeric($order) and !in_array($order, ["up","down"]))
 		{
-			throw new Exception("«" . static::$_name . "». Невозможно выполнить сортировку. Необходимо указать «up» или «down».");
+			throw new Exception("«" . static::$name . "». Невозможно выполнить сортировку. Необходимо указать «up» или «down».");
 		}
 		
 		/* Находим поле с типом «order» и поле первичный ключ */
 		$field_primary = null; $field_order = null; 
-		foreach (static::$_field as $f)
+		foreach (static::$fields as $f)
 		{
 			if (isset($f['primary']) and $f['primary'] === true)
 			{
@@ -1258,7 +1161,7 @@ SQL
 		
 		if (empty($field_order))
 		{
-			throw new Exception("«" . static::$_name . "». Невозможно выполнить сортировку. Отсутствует поле с типом «order».");
+			throw new Exception("«" . static::$name . "». Невозможно выполнить сортировку. Отсутствует поле с типом «order».");
 		}
 		
 		/* WHERE */
@@ -1278,7 +1181,7 @@ SQL
 		$other = static::select($where, [$field_primary['identified'], $field_order['identified']], 0, 0, [$field_order['identified'] => "asc"]);
 		if (count($other) < 2)
 		{
-			throw new Exception("«" . static::$_name . "». Невозможно выполнить сортировку. Необходимо хотя бы два элемента.");
+			throw new Exception("«" . static::$name . "». Невозможно выполнить сортировку. Необходимо хотя бы два элемента.");
 		}
 		
 		/* Определяем новые значения order */
@@ -1294,7 +1197,7 @@ SQL
 		{
 			if ($key === 0)
 			{
-				throw new Exception("«" . static::$_name . "». Невозможно выполнить сортировку. Выше некуда.");
+				throw new Exception("«" . static::$name . "». Невозможно выполнить сортировку. Выше некуда.");
 			}
 
 			$primary_next = $other[$key - 1][$field_primary['identified']];
@@ -1305,7 +1208,7 @@ SQL
 		{
 			if ($key === count($other) - 1)
 			{
-				throw new Exception("«" . static::$_name . "». Невозможно выполнить сортировку. Ниже некуда.");
+				throw new Exception("«" . static::$name . "». Невозможно выполнить сортировку. Ниже некуда.");
 			}
 
 			$primary_next = $other[$key + 1][$field_primary['identified']];
@@ -1337,7 +1240,7 @@ SQL
 		$type_id_count = 0;
 		$type_order_count = 0;
 		
-		foreach (static::$_field as $f)
+		foreach (static::$fields as $f)
 		{
 			/* Идентификатор */
 			if (empty($f['identified']))
@@ -1597,7 +1500,7 @@ SQL
 					$f['order_where'] = (array)$f['order_where'];
 					foreach ($f['order_where'] as $identified)
 					{
-						if (!in_array($identified, array_column(static::$_field, "identified")))
+						if (!in_array($identified, array_column(static::$fields, "identified")))
 						{
 							throw new Exception("Поле «" . static::_table() . ".{$f['identified']}». «order_where» задан неверно. Отсутствует поле «{$identified}».");
 						}
@@ -1615,7 +1518,7 @@ SQL
 		
 		/* Получаем meta и проверяем DEFAULT значения */
 		static::_meta();
-		foreach (static::$_field as $f)
+		foreach (static::$fields as $f)
 		{
 			if (array_key_exists("default", $f))
 			{
@@ -1641,7 +1544,7 @@ SQL
 		
 		if ($meta === "field")
 		{
-			return static::$_field;
+			return static::$fields;
 		}
 		else
 		{
@@ -1666,7 +1569,7 @@ SQL
 			foreach ($data as $identified)
 			{
 				$isset = false;
-				foreach (static::$_field as $f)
+				foreach (static::$fields as $f)
 				{
 					if ($identified === $f['identified'])
 					{
@@ -1678,7 +1581,7 @@ SQL
 
 				if ($isset === false)
 				{
-					throw new Exception("«" . static::$_name . "». Поля с идентификатором «{$identified}» не существует.");
+					throw new Exception("«" . static::$name . "». Поля с идентификатором «{$identified}» не существует.");
 				}
 			}
 		}
@@ -1688,7 +1591,7 @@ SQL
 			foreach ($data as $identified => $value)
 			{
 				$isset = false;
-				foreach (static::$_field as $f)
+				foreach (static::$fields as $f)
 				{
 					if ($identified === $f['identified'])
 					{
@@ -1701,7 +1604,7 @@ SQL
 
 				if ($isset === false)
 				{
-					throw new Exception("«" . static::$_name . "». Поля с идентификатором «{$identified}» не существует.");
+					throw new Exception("«" . static::$name . "». Поля с идентификатором «{$identified}» не существует.");
 				}
 			}
 		}
@@ -1729,15 +1632,15 @@ SQL
 		self::$_sql_constraint[static::_table()] = [];
 		
 		/* Совмещаем данные полей с полями типа */
-		foreach (static::$_field as $key => $f)
+		foreach (static::$fields as $key => $f)
 		{
 			$type = TM_Type::get($f['type']);
-			static::$_field[$key] = array_merge($type, $f);
+			static::$fields[$key] = array_merge($type, $f);
 		}
 		
 		/* Собираем сведения */
 		$un_num = 1;
-		foreach (static::$_field as $key => $f)
+		foreach (static::$fields as $key => $f)
 		{
 			/* Primary */
 			if (isset($f['primary']) and $f['primary'] === true)
@@ -1797,14 +1700,14 @@ SQL
 			{
 				if (empty($f['foreign']['key']))
 				{
-					$f['foreign']['key'] = static::$_table . "_FK_" . $f['identified'];
+					$f['foreign']['key'] = static::$table . "_FK_" . $f['identified'];
 				}
 				
 				$f['foreign']['identified'] = $f['identified'];
 				
 				if (empty($f['foreign']['schema']))
 				{
-					$f['foreign']['schema'] = static::$_schema;
+					$f['foreign']['schema'] = static::$schema;
 				}
 				
 				if (empty($f['foreign']['type']))
@@ -1820,7 +1723,7 @@ SQL
 			{
 				$seq_identified = self::_get_sql($f['seq'], 
 				[
-					"table" => static::$_table,
+					"table" => static::$table,
 					"identified" => $f['identified']
 				]);
 				
@@ -1861,7 +1764,7 @@ SQL
 			/* default, require, sql_default */
 			if (array_key_exists("default", $f) or isset($f["sql_default"]))
 			{
-				static::$_field[$key]['require'] = false;
+				static::$fields[$key]['require'] = false;
 			}
 			
 			/* Ограничения */
@@ -1869,8 +1772,8 @@ SQL
 			{
 				$replace = 
 				[
-					"schema" => static::$_schema,
-					"table"	=> static::$_table,
+					"schema" => static::$schema,
+					"table"	=> static::$table,
 					"identified" => $f['identified']
 				];
 				
@@ -1931,13 +1834,66 @@ SQL
 	 */
 	private static function _prepare_values(array $fdata) : array
 	{
-		foreach ($fdata as $key => $f)
+		foreach ($fdata as &$f)
 		{
 			if (!empty($f['prepare']))
 			{
-				$fdata[$key]['value'] = TM_Type::prepare($f['value'], $f['prepare']);
+				$f['value'] = TM_Type::prepare($f['value'], $f['prepare']);
 			}
 		}
+		unset($f);
+		
+		return $fdata;
+	}
+	
+	/**
+	 * Подготовить значение в SQL Where
+	 * 
+	 * @param array $fdata
+	 */
+	private static function _prepare_where_values (array $fdata) : array
+	{
+		foreach ($fdata as &$f)
+		{
+			/* Определяем значение и оператор */
+			$operator = "="; $value = $f['value'];
+			if (is_array($f['value']))
+			{
+				$operator = $f['value'][0];
+				$value = $f['value'][1];
+			}
+			
+			/* Простой оператор */
+			if (in_array($operator, ["=", "!=", "<>", ">", ">=", "<", "<="]))
+			{
+				if (!empty($f['prepare']))
+				{
+					$value = TM_Type::prepare($value, $f['prepare']);
+				}
+				$f['value'] = $value;
+			}
+			/* Операторы LIKE, NOT LIKE, ILIKE, NOT ILIKE */
+			else if (in_array($operator, ["like", "not like", "ilike", "not ilike"]))
+			{
+				$f['value'] = $value;
+			}
+			/* Оператор IN, NOT IN */
+			else if (in_array($operator, ["in", "not in"]))
+			{
+				foreach ($value as &$v)
+				{
+					if (!empty($f['prepare']))
+					{
+						$v = TM_Type::prepare($v, $f['prepare']);
+					}
+					$v = str_replace("\"", "\\\"", $v);
+				}
+				unset($v);
+				
+				$f['value'] = "{\"" . implode("\",\"", $value) . "\"}";
+			}
+		}
+		unset($f);
 		
 		return $fdata;
 	}
@@ -2004,12 +1960,239 @@ SQL
 	{
 		if ($quotes === false)
 		{
-			return static::$_schema . "." . static::$_table;
+			return static::$schema . "." . static::$table;
 		}
 		elseif ($quotes === true)
 		{
-			return '"' . static::$_schema . '"."' . static::$_table . '"';
+			return '"' . static::$schema . '"."' . static::$table . '"';
 		}
+	}
+	
+	/**
+	 * Проверить поле
+	 * 
+	 * @param array $f
+	 * @param array $err
+	 * @param boolean $exception_many
+	 */
+	private static function _check_field (array $f, array &$err, bool $exception_many)
+	{
+		/* Не проверять */
+		if (isset($f['check']) and $f['check'] === false)
+		{
+			return;
+		}
+
+		/* NULL */
+		if ($f['value'] === null)
+		{
+			if (isset($f['null']) and $f['null'] === true)
+			{
+				return;
+			}
+			else
+			{
+				throw new Exception("Поле «{$f['name']}» не может быть задано как «NULL».");
+			}
+		}
+
+		/* Не является строкой */
+		if (!is_scalar($f['value']))
+		{
+			$error = "Поле «{$f['name']}» задано неверно. Не является строкой.";
+			if ($exception_many)
+			{
+				$err[$f['identified']] = $error;
+				return;
+			}
+			else
+			{
+				throw new Exception($error);
+			}
+		}
+
+		/* Преобразуем в строку */
+		if (is_bool($f['value'])) 
+		{
+			$f['value'] = (string)(int)$f['value'];
+		}
+		else
+		{
+			$f['value'] = (string)$f['value'];
+		}
+
+		/* Пустое значение */
+		if (trim($f['value']) === "")
+		{
+			/* Не обязательно для заполения */
+			if (isset($f['empty_allow']) and $f['empty_allow'] === true)
+			{
+				return;
+			}
+			/* Обязательно для заполнения */
+			else
+			{
+				$error = "«" . static::$name . "». Поле «{$f['name']}» не заполнено.";
+				if ($exception_many)
+				{
+					$err[$f['identified']] = $error;
+					return;
+				}
+				else
+				{
+					throw new Exception($error);
+				}	
+			}
+		}
+
+		/* Проверяем на соответствие типу */
+		if 
+		(
+			($f['type'] !== "enum" and !TM_Type::check($f['type'], $f['value'])) or
+			($f['type'] === "enum" and !TM_Type::check_enum($f['value'], $f['enum_values'])) 
+		)
+		{
+			$error = "Поле «{$f['name']}» задано неверно. " . TM_Type::get_last_error();
+			if ($exception_many)
+			{
+				$err[$f['identified']] = $error;
+				return;
+			}
+			else
+			{
+				throw new Exception($error);
+			}
+		}
+	}
+	
+	/**
+	 * Проверить данные в массиве where и получить строку SQL
+	 * 
+	 * @param array $where
+	 */
+	private static function _sql_where (array $where) : string
+	{
+		$err = [];
+		
+		$sql_where = "WHERE\n"; 
+		$param_num = 1;
+		
+		$where_info = static::_data_info ($where);
+		foreach ($where_info as $f)
+		{
+			/* Приведение к общему формату */
+			$value = $f['value'];
+			if (is_scalar($value) or $value === null)
+			{
+				$value = ["=", $value];
+			}
+			
+			/* Проверка value */
+			if ($value !== array_values($value) or count($value) > 2)
+			{
+				throw new Exception("«" . static::$name . "». Значения WHERE заданы неверно. Должен назначен массив типа [string, string]");
+			}
+			
+			$operator = $value[0];
+			if (!in_array($operator, self::$_where_operator))
+			{
+				throw new Exception("«" . static::$name . "». Значения WHERE заданы неверно. Недопустимый оператор. Доступные операторы: \"" . implode("\", \"", self::$_where_operator) . "\".");
+			}
+			
+			/* Обычная строка */
+			if (in_array($operator, ["=", "!=", "<>", ">", ">=", "<", "<="]))
+			{
+				$f['value'] = $value[1];
+				static::_check_field($f, $err, false);
+			}
+			/* Значения типа: like, not like, ilike, not ilike */
+			else if (in_array($operator, ["like", "not like", "ilike", "not ilike"]))
+			{
+				if (!isset($f['sql_like']) or $f['sql_like'] !== true)
+				{
+					throw new Exception("«" . static::$name . "». Значение WHERE заданы неверно. Оператор «like», «not like», «ilike», «not ilike» не может быть использован с типом «" . $f['type'] . "».");
+				}
+				
+				$f['value'] = str_replace(["%", "_"], "", $value[1]);
+				static::_check_field($f, $err, false);
+			}
+			/* Значения типа «IN», «NOT IN» */
+			else if (in_array($operator, ["in", "not in"]))
+			{
+				if (!is_array($value[1]) or $value[1] !== array_values($value[1]))
+				{
+					throw new Exception("«" . static::$name . "». Значения WHERE заданы неверно. Для оператора «IN», «NOT IN» значение должно быть массивом тип [string, string, ...].");
+				}
+				
+				foreach ($value[1] as $v)
+				{
+					$f['value'] = $v;
+					static::_check_field($f, $err, false);
+				}
+			}
+			
+			/* Получаем SQL */
+			if ($param_num !== 1)
+			{
+				$sql_where .= " AND\n";
+			}
+			
+			/* Операторы: «=», «!=», «<>» */
+			if (in_array($operator, ["=", "!=", "<>"]))
+			{
+				if (!isset($f['null']) or $f['null'] === false)
+				{
+					$sql_where .= "\"{$f['identified']}\" {$operator} \${$param_num}";
+				}
+				else
+				{
+					$sql_where .= 
+<<<SQL
+(
+	(
+		\${$param_num}::{$f['sql_type']} IS NULL AND
+		"{$f['identified']}" IS NULL
+	) OR
+	(
+		\${$param_num}::{$f['sql_type']} IS NOT NULL AND
+		"{$f['identified']}" {$operator} \${$param_num}
+	)
+)
+SQL;
+				}
+			}
+			/* Другие операторы */
+			else if (in_array($operator, ["like", "not like", "ilike", "not ilike", ">", ">=", "<", "<="]))
+			{
+				$operator = strtoupper($operator);
+				$sql_where .= 
+<<<SQL
+\t "{$f['identified']}" {$operator} \${$param_num}
+SQL;
+			}
+			/* Операторы: «IN», «NOT IN» */
+			else if (in_array($operator, ["in", "not in"]))
+			{
+				if ($operator === "in")
+				{
+					$sql_where .= 
+<<<SQL
+\t "{$f['identified']}" = ANY (\${$param_num})
+SQL;
+				}
+				else if ($operator === "not in")
+				{
+					$sql_where .= 
+<<<SQL
+\t "{$f['identified']}" != ALL (\${$param_num})
+SQL;
+				}
+			}
+			
+			$param_num++;
+		}
+		
+		return $sql_where;
 	}
 }
 

@@ -9,21 +9,21 @@ class Product extends TM
 	 * 
 	 * @var string
 	 */
-	protected static $_table = "product";
+	public static $table = "product";
 	
 	/**
-	 * Товар
+	 * Наименование таблицы
 	 * 
 	 * @var string
 	 */
-	protected static $_name = "Товар";
+	public static $name = "Товар";
 	
 	/**
 	 * Поля
 	 * 
 	 * @var array
 	 */
-	protected static $_field = 
+	public static $fields = 
 	[
 		[
 			"identified" => "ID",

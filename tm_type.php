@@ -21,26 +21,30 @@ class TM_Type
 		"identified" => 
 		[
 			"sql_type"	=> "varchar(127)",
-			"prepare"	=> "strtolower"
+			"prepare"	=> "strtolower",
+			"sql_like"	=> true
 		],
 		"string" => 
 		[
 			"sql_type"	=> "varchar(255)",
-			"equal"		=> "ilike"
+			"equal"		=> "ilike",
+			"sql_like"	=> true
 		],
 		"text" => 
 		[
 			"sql_type"	=> "text",
 			"equal"		=> "ilike",
 			"null"		=> true,
-			"lite"		=> false
+			"lite"		=> false,
+			"sql_like"	=> true
 		],
 		"html" => 
 		[
 			"sql_type"	=> "text",
 			"equal"		=> "ilike",
 			"null"		=> true,
-			"lite"		=> false
+			"lite"		=> false,
+			"sql_like"	=> true
 		],
 		"int" => 
 		[
@@ -62,7 +66,8 @@ class TM_Type
 		"email" => 
 		[
 			"sql_type"	=> "varchar(127)",
-			"prepare"	=> "strtolower"
+			"prepare"	=> "strtolower",
+			"sql_like"	=> true
 		],
 		"price" => 
 		[
@@ -84,19 +89,22 @@ class TM_Type
 		[
 			"sql_type"	=> "varchar(255)",
 			"prepare"	=> "mb_strtolower",
-			"equal"		=> "like"
+			"equal"		=> "like",
+			"sql_like"	=> true
 		],
 		"url_path" => 
 		[
 			"sql_type"	=> "varchar(255)",
 			"prepare"	=> "mb_strtolower",
-			"equal"		=> "like"
+			"equal"		=> "like",
+			"sql_like"	=> true
 		],
 		"url" => 
 		[
 			"sql_type"	=> "varchar(255)",
 			"prepare"	=> "mb_strtolower",
-			"equal"		=> "like"
+			"equal"		=> "like",
+			"sql_like"	=> true
 		],
 		"tags" => 
 		[
@@ -104,13 +112,15 @@ class TM_Type
 			"prepare"	=> "mb_strtolower",
 			"equal"		=> "like",
 			"null"		=> true,
-			"lite"		=> false
+			"lite"		=> false,
+			"sql_like"	=> true
 		],
 		"path" => 
 		[
 			"sql_type"	=> "varchar(255)",
 			"prepare"	=> "mb_strtolower",
-			"equal"		=> "like"
+			"equal"		=> "like",
+			"sql_like"	=> true
 		],
 		"ip" => 
 		[
@@ -146,7 +156,8 @@ class TM_Type
 		[
 			"sql_type"			=> "varchar(255)",
 			"sql_constraint"	=> "CONSTRAINT \"{table}_{identified}_check\" CHECK (\"{identified}\" IN ({enum_values}))",
-			"equal"				=> "like"
+			"equal"				=> "like",
+			"sql_like"			=> true
 		],
 		"json" => 
 		[
@@ -406,7 +417,7 @@ SQL;
 	 * @param int $num
 	 * @return string
 	 */
-	public static function get_sql_where(array $field, int $num = 1, bool $not = false) : string
+	public static function get_sql_where_unique(array $field, int $num = 1, bool $not = false) : string
 	{
 		$type = $field['type'];
 		

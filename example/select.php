@@ -20,7 +20,7 @@ try
 	$category_all = Category::select();
 	print_r($category_all);
 	
-	/* Корневые категории */
+	/* Корневые категории. Используем в условии null */
 	$category_parent = Category::select(["Parent" => null]);
 	print_r($category_parent);
 	
@@ -32,6 +32,10 @@ try
 	$category_by_page_2 = Category::select([], [], 2, 10, ["Name" => "asc"]);
 	print_r($category_by_page_2);
 	
+	/* Сделать запрос используя другие операторы в SELECT WHERE. */
+	print_r(Product::select(["ID" => [">=", 3]]));
+	print_r(Product::select(["ID" => ["in", [1,2,4]]]));
+	print_r(Product::select(["Name" => ["like", "%вар_3%"]]));
 }
 catch (Exception_Many $e)
 {
