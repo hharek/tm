@@ -1,8 +1,12 @@
 <?php
-namespace TM\Type;
+namespace TM\Types;
 
-class Id extends \TM\Column
+/**
+ * Порядковый номер. Первичный ключ
+ * Рекомендуется всегда добавлять в таблицу
+ */
+class Id extends Serial
 {
-
+	public $primary = true;
 }
 ?>

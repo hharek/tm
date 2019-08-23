@@ -28,6 +28,24 @@ class Column
 	public $name;
 
 	/**
+	 * Тип столбца. Используется при выполнении функции create
+	 *
+	 * @var string
+	 * @example "varchar(255)", "text", "int(4)", "boolean"
+	 */
+	public $type_sql;
+
+	/**
+	 * PHP тип значений столбца. Приведение к PHP типу осуществляется после выборки: select(), selectl(), get()
+	 * Если необходимо привести к типу «array» или другому классу, воспользуйтесь параметром «process»
+	 * Допустимые значения: "string", "int", "integer", "float", "double", "real", "bool", "boolean", "array", "object"
+	 *
+	 * @var string
+	 * @example "int", "string", "float", "boolean"
+	 */
+	public $type_php;
+
+	/**
 	 * Является ли значения в столбце уникальными
 	 *
 	 * @var boolean
@@ -84,6 +102,7 @@ class Column
 
 	/**
 	 * Может ли поле иметь значение NULL
+	 * Трижды подумайте, чтобы использовать. Возможно для строк лучше использовать $this->empty.
 	 *
 	 * @var bool
 	 */
@@ -101,7 +120,7 @@ class Column
 	 *
 	 * @var bool
 	 */
-	public $trim = false;
+	public $trim = true;
 
 	/**
 	 * Обязательно ли указывать столбец при INSERT.
@@ -111,29 +130,21 @@ class Column
 	public $require = true;
 
 	/**
-	 * Показать столбец в выборке selectl()
+	 * Показать столбец в выборке selectl().
+	 * selectl() - выборка полей обладающих небольшим размером.
 	 *
 	 * @var bool
 	 */
 	public $lite = true;
 
 	/**
-	 * Тип столбца. Используется при выполнении функции create
+	 * Оператор используем при сравнении значения
+	 * Допустимые значения: "=", "like", "ilike"
 	 *
 	 * @var string
-	 * @example "varchar(255)", "text", "int(4)", "boolean"
+	 * @example "=", "like", "ilike"
 	 */
-	public $type_sql;
-
-	/**
-	 * PHP тип значений столбца. Приведение к PHP типу осуществляется после выборки: select(), selectl(), get()
-	 * Если необходимо привести к типу «array» или другому классу, воспользуйтесь параметром «process»
-	 * Допустимые значения: "string", "int", "integer", "float", "double", "real", "bool", "boolean", "array", "object"
-	 *
-	 * @var string
-	 * @example "int", "string", "float", "boolean"
-	 */
-	public $type_php;
+	public $equal = "=";
 
 	/**
 	 * Функция проверка значения перед запросом
@@ -167,54 +178,48 @@ class Column
 	 * Используется по умолчанию, если не указана другая функция в переменной $this->check
 	 *
 	 * @param mixed $value
+	 * @param Column|null $column
 	 * @return bool
 	 */
 	public static function check ($value, Column $column = null) : bool
 	{
 		switch ($column->type_php)
 		{
+			case "string":
+				if (!is_string($value) && !is_numeric($value))
+					throw new \Exception("Не является строкой.");
+				break;
+
 			case "int":
 			case "integer":
 			case "float":
 			case "double":
 			case "real":
-				if (is_numeric($value))
-					return true;
-				else
-					return false;
+				if (!is_numeric($value))
+					throw new \Exception("Не является числом.");
 				break;
 
 			case "bool":
 			case "boolean":
 				if ($value === true || $value === false)
-				{
 					return true;
-				}
 				elseif ($value === 1 || $value === 0)
-				{
 					return true;
-				}
-				elseif (is_string($value))
-				{
-					if (in_array($value, PGSQL_BOOLEAN_TRUE) || in_array($value, PGSQL_BOOLEAN_FALSE))
-						return true;
-					else
-						return false;
-				}
+				elseif (is_string($value) && (in_array($value, PGSQL_BOOLEAN_TRUE) || in_array($value, PGSQL_BOOLEAN_FALSE)))
+					return true;
+				else
+					throw new \Exception("Не является булёвым значением.");
 				break;
 
 			case "array":
-				if (is_array($value))
-					return true;
-				else
-					return false;
+				if (!is_array($value))
+					throw new \Exception("Не является массивом.");
 				break;
 
 			case "object":
-				if (is_object($value) && is_a($value, \stdClass::class))
-					return true;
-				else
-					return false;
+				if (!is_object($value) || !get_class($value) !== \stdClass::class)
+					throw new \Exception("Не является объектом.");
+				break;
 		}
 
 		return true;
@@ -225,7 +230,7 @@ class Column
 	 * Используется по умолчанию, если не указана другая функция в переменной $this->prepare
 	 *
 	 * @param mixed $value
-	 * @param Column $column
+	 * @param Column|null $column
 	 * @return string
 	 */
 	public static function prepare ($value, Column $column = null) : string
