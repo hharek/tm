@@ -28,7 +28,8 @@ class Column
 	public $name;
 
 	/**
-	 * Тип столбца. Используется при выполнении функции create
+	 * Тип столбца.
+	 * Используется при выполнении функции create
 	 *
 	 * @var string
 	 * @example "varchar(255)", "text", "int(4)", "boolean"
@@ -36,8 +37,9 @@ class Column
 	public $type_sql;
 
 	/**
-	 * PHP тип значений столбца. Приведение к PHP типу осуществляется после выборки: select(), selectl(), get()
-	 * Если необходимо привести к типу «array» или другому классу, воспользуйтесь параметром «process»
+	 * PHP тип значений столбца.
+	 * Приведение к PHP типу осуществляется после выборки: select(), selectl(), get()
+	 * Если необходимо привести к объекту отдельного классу, воспользуйтесь параметром «process» и «prepare»
 	 * Допустимые значения: "string", "int", "integer", "float", "double", "real", "bool", "boolean", "array", "object"
 	 *
 	 * @var string
@@ -186,7 +188,7 @@ class Column
 		switch ($column->type_php)
 		{
 			case "string":
-				if (!is_string($value) && !is_numeric($value))
+				if (!is_scalar($value))
 					throw new \Exception("Не является строкой.");
 				break;
 
@@ -300,7 +302,7 @@ class Column
 				break;
 
 			case "array":
-				return json_decode($value, true);
+				return json_decode($value, true, 512, JSON_THROW_ON_ERROR);
 				break;
 
 			case "object":
