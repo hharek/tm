@@ -9,6 +9,8 @@ namespace TM;
  */
 class Table
 {
+	use Method\_Meta, Method\Create;
+
 	/**
 	 * Наименование схемы
 	 *
@@ -37,5 +39,20 @@ class Table
 	 * @var Column[]
 	 */
 	public static $columns = [];
+
+	/**
+	 * Сведения по первичному ключу
+	 * Может быть только один столбец
+	 *
+	 * @var array
+	 */
+	private static $_primary = [];
+
+	/**
+	 * Уникальные ключи
+	 *
+	 * @var array
+	 */
+	private static $_unique = [];
 }
 ?>

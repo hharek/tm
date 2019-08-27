@@ -18,5 +18,6 @@ Category::$columns[] = $column;
 $column = new \TM\Type\Str();
 $column->column = "Name";
 $column->name = "Наименование";
+$column->unique = true;
 Category::$columns[] = $column;
 ?>
