@@ -1,5 +1,5 @@
 <?php
-namespace TM\Types;
+namespace TM\Type;
 
 /**
  * Строка с тэгами через запятую
@@ -8,9 +8,8 @@ class Tags extends Text
 {
 	public static function check($value, \TM\Column $column = null): bool
 	{
-		if (!is_scalar($value))
+		if (!is_string($value))
 			throw new \Exception("Не является строкой.");
-		$value = (string)$value;
 
 		/* В нижний регистр */
 		$value = mb_strtolower($value);

@@ -1,5 +1,5 @@
 <?php
-namespace TM\Types;
+namespace TM\Type;
 
 /**
  * Последовательность. Целое число с автоувеличением

@@ -1,5 +1,5 @@
 <?php
-namespace TM\Types;
+namespace TM\Type;
 
 /**
  * Урл
@@ -12,7 +12,7 @@ class Url extends \TM\Column
 
 	public static function check($value, \TM\Column $column = null): bool
 	{
-		if (!is_scalar($value))
+		if (!is_string($value))
 			throw new \Exception("Не является строкой.");
 
 		$parse_url = parse_url($value);

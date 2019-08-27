@@ -1,5 +1,5 @@
 <?php
-namespace TM\Types;
+namespace TM\Type;
 
 /**
  * Путь урла
@@ -12,7 +12,7 @@ class Url_Path extends \TM\Column
 
 	public static function check($value, \TM\Column $column = null): bool
 	{
-		if (!is_scalar($value))
+		if (!is_string($value))
 			throw new \Exception("Не является строкой.");
 
 		/* Срезаем символы слэша в начале и конце */
@@ -25,9 +25,7 @@ class Url_Path extends \TM\Column
 		/* Разбор */
 		$value_ar = explode("/", $value);
 		foreach ($value_ar as $v)
-		{
 			Url_Part::check($v);
-		}
 
 		return true;
 	}

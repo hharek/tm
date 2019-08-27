@@ -1,5 +1,5 @@
 <?php
-namespace TM\Types;
+namespace TM\Type;
 
 /**
  * Поле со списком допустимых значений
@@ -10,7 +10,8 @@ class Enum extends \TM\Column
 	public $type_php = "string";
 
 	/**
-	 * Допустимые значения для поля
+	 * Массив допустимых значении для поля.
+	 * Только скалярные типы
 	 *
 	 * @var array
 	 */
@@ -19,8 +20,7 @@ class Enum extends \TM\Column
 	public static function check($value, Enum $column = null): bool
 	{
 		if (!is_scalar($value))
-			throw new \Exception("Не является строкой.");
-		$value = (string)$value;
+			throw new \Exception("Недопустимое значение");
 
 		if (!in_array($value, $column->enum_values))
 			throw new \Exception("Доступные значения: " . implode(", ", $column->enum_values) . ".");

@@ -1,5 +1,5 @@
 <?php
-namespace TM\Types;
+namespace TM\Type;
 
 /**
  * Путь к файлу или каталогу
@@ -11,6 +11,9 @@ class Url_Path extends \TM\Column
 
 	public static function check($value, \TM\Column $column = null): bool
 	{
+		if (!is_string($value))
+			throw new \Exception("Не является строкой.");
+
 		/* Символ "." */
 		if ($value === "." or $value === "/")
 			return true;

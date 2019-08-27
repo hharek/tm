@@ -1,5 +1,5 @@
 <?php
-namespace TM\Types;
+namespace TM\Type;
 
 /**
  * Почтовый ящик
@@ -12,8 +12,8 @@ class Email extends \TM\Column
 
 	public static function check($value, \TM\Column $column = null): bool
 	{
-		\TM\Column::check($value, $column);
-		$value = (string)$value;
+		if (!is_string($value))
+			throw new \Exception("Не является строкой.");
 
 		if (!filter_var($value, FILTER_VALIDATE_EMAIL))
 			throw new \Exception("Не является почтовым ящиком.");

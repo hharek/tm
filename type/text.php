@@ -1,5 +1,5 @@
 <?php
-namespace TM\Types;
+namespace TM\Type;
 
 /**
  * Cтрока без html-тегов
@@ -14,8 +14,8 @@ class Text extends \TM\Column
 
 	public static function check($value, \TM\Column $column = null): bool
 	{
-		\TM\Column::check($value, $column);
-		$value = (string)$value;
+		if (!is_string($value))
+			throw new \Exception("Не является строкой.");
 
 		if (strpos($value, chr(0)) !== false)
 			throw new \Exception("Обнаружен нулевой символ.");

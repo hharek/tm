@@ -1,8 +1,6 @@
 <?php
 namespace TM;
 
-use mysql_xdevapi\Exception;
-
 /**
  * Столбец
  *
@@ -188,8 +186,8 @@ class Column
 		switch ($column->type_php)
 		{
 			case "string":
-				if (!is_scalar($value))
-					throw new \Exception("Не является строкой.");
+				if (!is_string($value) || is_numeric($value))
+					throw new \Exception("Недопустимое значение.");
 				break;
 
 			case "int":

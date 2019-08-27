@@ -1,5 +1,5 @@
 <?php
-namespace TM\Types;
+namespace TM\Type;
 
 /**
  * Строка не более 255 символов, и без пробельных символов
@@ -12,7 +12,8 @@ class _String extends \TM\Column
 
 	public static function check ($value, \TM\Column $column = null) : bool
 	{
-		\TM\Column::check($value, $column);
+		if (!is_string($value) || is_numeric($value))
+			throw new \Exception("Недопустимое значение.");
 		$value = (string)$value;
 
 		if (strpos($value, chr(0)) !== false)

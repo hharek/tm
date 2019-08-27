@@ -10,12 +10,12 @@ class Category extends TM\Table
 }
 
 /* Поля */
-$column = new \TM\Types\Id();
+$column = new \TM\Type\Id();
 $column->column = "ID";
 $column->name = "Порядковый номер";
 Category::$columns[] = $column;
 
-$column = new \TM\Types\Str();
+$column = new \TM\Type\Str();
 $column->column = "Name";
 $column->name = "Наименование";
 Category::$columns[] = $column;
