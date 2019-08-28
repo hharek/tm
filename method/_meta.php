@@ -37,6 +37,11 @@ trait _Meta
 	private static $_unique = [];
 
 	/**
+	 * @var Column[]
+	 */
+	private static $_order = [];
+
+	/**
 	 * Собираем информацию по таблице
 	 */
 	public static function _meta ()
@@ -65,6 +70,14 @@ trait _Meta
 				static::$_unique[$key][] = $c;
 			}
 		}
+
+		/* Столбцы сортировки */
+		foreach (static::$columns as $c)
+		{
+			if ($c->order)
+				static::$_order[$c->order_index] = $c;
+		}
+		ksort(static::$_order);
 	}
 
 	/**

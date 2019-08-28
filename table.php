@@ -56,5 +56,12 @@ class Table
 	 * @var Column[]
 	 */
 	private static $_unique = [];
+
+	/**
+	 * Столбцы используемые по умолчанию для сортировки выборки
+	 *
+	 * @var Column[]
+	 */
+	private static $_order = [];
 }
 ?>
