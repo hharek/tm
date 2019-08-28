@@ -9,7 +9,9 @@ namespace TM;
  */
 class Table
 {
-	use Method\_Meta, Method\Create;
+	use Method\_Meta,
+		Method\Check_Struct,
+		Method\Create;
 
 	/**
 	 * Наименование схемы
@@ -44,14 +46,14 @@ class Table
 	 * Сведения по первичному ключу
 	 * Может быть только один столбец
 	 *
-	 * @var array
+	 * @var Column
 	 */
 	private static $_primary = [];
 
 	/**
 	 * Уникальные ключи
 	 *
-	 * @var array
+	 * @var Column[]
 	 */
 	private static $_unique = [];
 }

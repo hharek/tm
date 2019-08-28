@@ -34,22 +34,56 @@ trait Create
 {
 	use _Meta;
 
+	/**
+	 * Наименование схемы
+	 *
+	 * @var string
+	 */
 	public static $schema = "public";
+
+	/**
+	 * Наименование таблицы в базе
+	 *
+	 * @var string
+	 */
 	public static $table;
+
+	/**
+	 * Наименование
+	 * Добавляется в комментарий к таблице и используется при выводе сообщений об ошибках
+	 *
+	 * @var string
+	 */
 	public static $name;
 
 	/**
+	 * Столбцы таблицы. Массив объектов Column
+	 *
 	 * @var \TM\Column[]
 	 */
 	public static $columns = [];
 
 	/**
+	 * Сведения по первичному ключу
+	 * Может быть только один столбец
+	 *
+	 * @var \TM\Column
+	 */
+	private static $_primary = [];
+
+	/**
+	 * Уникальные ключи
+	 *
+	 * @var \TM\Column[]
+	 */
+	private static $_unique = [];
+
+	/**
 	 * Создание таблицы
 	 *
 	 * @param bool $drop_if_exist
-	 * @return bool
 	 */
-	public static function create (bool $drop_if_exist = false) : bool
+	public static function create (bool $drop_if_exist = false)
 	{
 		$drop_table = "";
 		if ($drop_if_exist)
@@ -66,8 +100,6 @@ trait Create
 				"{default}" => static::_create_default_sql($c)
 			]);
 		}
-
-		return true;
 	}
 
 	/**
