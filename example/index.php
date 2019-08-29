@@ -1,8 +1,6 @@
 <?php
 require "settings.php";
-require "../table.php";
-require "../column.php";
+require "../autoloader.php";
+require "table/category.php";
 
-
-require "tables/category.php";
 ?>

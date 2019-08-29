@@ -4,9 +4,12 @@ namespace TM\Type;
 /**
  * Булёвое значение
  */
-class Boolean extends \TM\Column
+class _Bool extends \TM\Column
 {
 	public $type_sql = "boolean";
 	public $type_php = "boolean";
 }
+
+/* Алиас */
+class Boolean extends _Bool {}
 ?>
