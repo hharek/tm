@@ -6,50 +6,36 @@ use TM\Exception;
 /**
  * Создание таблицы
  */
-trait Check_Struct
+trait TCheck
 {
 	use _Meta;
 
 	/**
-	 * Наименование схемы
-	 *
 	 * @var string
 	 */
 	public static $schema = "public";
 
 	/**
-	 * Наименование таблицы в базе
-	 *
 	 * @var string
 	 */
 	public static $table;
 
 	/**
-	 * Наименование
-	 * Добавляется в комментарий к таблице и используется при выводе сообщений об ошибках
-	 *
 	 * @var string
 	 */
 	public static $name;
 
 	/**
-	 * Столбцы таблицы. Массив объектов Column
-	 *
 	 * @var \TM\Column[]
 	 */
 	public static $columns = [];
 
 	/**
-	 * Сведения по первичному ключу
-	 * Может быть только один столбец
-	 *
 	 * @var \TM\Column
 	 */
 	private static $_primary = [];
 
 	/**
-	 * Уникальные ключи
-	 *
 	 * @var \TM\Column[]
 	 */
 	private static $_unique = [];
@@ -57,7 +43,7 @@ trait Check_Struct
 	/**
 	 * Проверка структуры таблицы и класса
 	 */
-	public static function check_struct ()
+	public static function tcheck ()
 	{
 		/* Общая проверка. А вдруг? */
 		if (static::$schema === null || !is_string(static::$schema))
@@ -75,6 +61,9 @@ trait Check_Struct
 		/* Проверка отдельно столбцов */
 		foreach (static::$columns as $c)
 		{
+			if (!($c instanceof \TM\Column))
+				throw new \Exception(static::$name . ". Столбец не является классом «Column».");
+
 			/* Наименование столбца и наименование */
 			if ($c->column === null)
 				throw new \Exception(static::$name . ". У одного из столбцов не указан параметр «column».");
@@ -112,10 +101,19 @@ trait Check_Struct
 			if ($c->null !== true && $c->null !== false)
 				throw new Exception("Параметр «null» указан неверно. Можно указать только «true» или «false».", static::$schema, static::$table, static::$name, $c);
 
-			if ($c->require && ($c->default !== null || $c->default_sql !== null))
-				throw new Exception("Если столбец обязательный (require), то не нужно указывать значения по умолчанию (default или default_sql).", static::$schema, static::$table, static::$name, $c);
-			elseif (!$c->require && !$c->null && ($c->default === null && $c->default_sql === null))
-				throw new Exception("Если столбец необязательный (require), то необходимо указать поля по умолчанию (default или default_sql).", static::$schema, static::$table, static::$name, $c);
+			if ($c->require)
+			{
+				if ($c->default !== null || $c->default_sql !== null)
+					throw new Exception("Если столбец обязательный (require), то не нужно указывать значения по умолчанию (default или default_sql).", static::$schema, static::$table, static::$name, $c);
+			}
+			elseif (!$c->require)
+			{
+				if (!$c->null && $c->type_sql != "serial") /* NULL и SERIAL можно без DEFAULT */
+				{
+					if ($c->default === null && $c->default_sql === null)
+						throw new Exception("Если столбец необязательный (require), то необходимо указать поля по умолчанию (default или default_sql).", static::$schema, static::$table, static::$name, $c);
+				}
+			}
 
 			if ($c->default !== null && $c->default_sql !== null)
 				throw new Exception("Нужно указать только один параметр «default» или «default_sql».", static::$schema, static::$table, static::$name, $c);
@@ -208,7 +206,4 @@ trait Check_Struct
 		}
 	}
 }
-
-
-
 ?>

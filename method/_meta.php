@@ -7,21 +7,6 @@ namespace TM\Method;
 trait _Meta
 {
 	/**
-	 * @var string
-	 */
-	public static $schema = "public";
-
-	/**
-	 * @var string
-	 */
-	public static $table;
-
-	/**
-	 * @var string
-	 */
-	public static $name;
-
-	/**
 	 * @var \TM\Column[]
 	 */
 	public static $columns = [];
@@ -37,7 +22,7 @@ trait _Meta
 	private static $_unique = [];
 
 	/**
-	 * @var Column[]
+	 * @var \TM\Column[]
 	 */
 	private static $_order = [];
 
@@ -78,24 +63,6 @@ trait _Meta
 				static::$_order[$c->order_index] = $c;
 		}
 		ksort(static::$_order);
-	}
-
-	/**
-	 * Получить имя таблицы
-	 *
-	 * @param boolean $quotes
-	 * @return string
-	 */
-	private static function _table(bool $quotes = false) : string
-	{
-		if ($quotes)
-		{
-			return static::$schema . "." . static::$table;
-		}
-		else
-		{
-			return '"' . static::$schema . '"."' . static::$table . '"';
-		}
 	}
 }
 ?>

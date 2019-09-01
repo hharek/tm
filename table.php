@@ -10,7 +10,7 @@ namespace TM;
 class Table
 {
 	use Method\_Meta,
-		Method\Check_Struct,
+		Method\TCheck,
 		Method\Create;
 
 	/**

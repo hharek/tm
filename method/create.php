@@ -32,48 +32,35 @@ namespace TM\Method;
  */
 trait Create
 {
-	use _Meta;
+	use _Meta,
+		_Table;
 
 	/**
-	 * Наименование схемы
-	 *
 	 * @var string
 	 */
 	public static $schema = "public";
 
 	/**
-	 * Наименование таблицы в базе
-	 *
 	 * @var string
 	 */
 	public static $table;
 
 	/**
-	 * Наименование
-	 * Добавляется в комментарий к таблице и используется при выводе сообщений об ошибках
-	 *
 	 * @var string
 	 */
 	public static $name;
 
 	/**
-	 * Столбцы таблицы. Массив объектов Column
-	 *
 	 * @var \TM\Column[]
 	 */
 	public static $columns = [];
 
 	/**
-	 * Сведения по первичному ключу
-	 * Может быть только один столбец
-	 *
 	 * @var \TM\Column
 	 */
 	private static $_primary = [];
 
 	/**
-	 * Уникальные ключи
-	 *
 	 * @var \TM\Column[]
 	 */
 	private static $_unique = [];
