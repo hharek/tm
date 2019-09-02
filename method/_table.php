@@ -25,13 +25,9 @@ trait _Table
 	protected static function _table(bool $quotes = false) : string
 	{
 		if ($quotes)
-		{
-			return static::$schema . "." . static::$table;
-		}
-		else
-		{
 			return '"' . static::$schema . '"."' . static::$table . '"';
-		}
+		else
+			return static::$schema . "." . static::$table;
 	}
 }
 ?>

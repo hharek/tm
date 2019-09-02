@@ -110,7 +110,7 @@ trait TCheck
 			{
 				try
 				{
-					call_user_func(get_class($c) . "::check", [$c->default, $c]);
+					call_user_func(get_class($c) . "::check", $c->default, $c);
 				}
 				catch (\Exception $e)
 				{

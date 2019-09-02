@@ -20,6 +20,9 @@ $c = new Type\Str();
 $c->column = "Articul";
 $c->name = "Артикул";
 $c->unique = true;
+$c->require = false;
+$c->default = "";
+$c->empty = true;
 Product::$columns[] = $c;
 
 $c = new Type\Str();
@@ -34,10 +37,20 @@ $c->column = "Category_ID";
 $c->name = "Категория";
 $c->unique = true;
 $c->unique_key = "Name_UN";
+$c->null = true;
 Product::$columns[] = $c;
 
 $c = new Type\Price();
 $c->column = "Price";
 $c->name = "Цена";
+$c->require = false;
+$c->default = 0.00;
+Product::$columns[] = $c;
+
+$c = new Type\Boolean();
+$c->column = "Active";
+$c->name = "Активность";
+$c->require = false;
+$c->default = false;
 Product::$columns[] = $c;
 ?>
