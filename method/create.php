@@ -88,9 +88,10 @@ trait Create
 	/**
 	 * Создание таблицы
 	 *
-	 * @param bool $drop_if_exist
+	 * @param bool $drop_if_exist Удалять таблицу если существует перед CREATE
+	 * @param bool $tm_comment Добавлять специальные комментарии
 	 */
-	public static function create (bool $drop_if_exist = false)
+	public static function create (bool $drop_if_exist = false, bool $tm_comment = false)
 	{
 		/* Проверяем правильность заполнение класса */
 		static::tcheck();
@@ -133,21 +134,43 @@ trait Create
 		$sql_unique = ",\n" . implode(",\n", $sql_unique_part);
 
 		/* Комментарий таблицы */
+		$comment = pg_escape_string(static::$name);
+
+		if ($tm_comment)	/* Специальный комментарий */
+		{
+			$table_data =
+			[
+				"schema" => static::$schema,
+				"table" => static::$table,
+				"name" => static::$name,
+			];
+			$comment .= " | " . pg_escape_string(json_encode($table_data, JSON_UNESCAPED_UNICODE));
+		}
+
 		$sql_comment_table = strtr(\TM\SQL_CREATE_COMMENT_TABLE,
 		[
 			"{table}" => static::_table(true),
-			"{comment}" => pg_escape_string(static::$name)
+			"{comment}" => $comment
 		]);
 
 		/* Комментарии по столбцам */
 		$sql_comment_column = "";
 		foreach (static::$columns as $c)
 		{
+			$comment = pg_escape_string($c->name);
+
+			if ($tm_comment) /* Специальный комментарий по столбцу */
+			{
+				$data = static::_column_data_used($c);
+				$comment .= " | " . pg_escape_string(json_encode($data, JSON_UNESCAPED_UNICODE));
+			}
+
+			/* SQL */
 			$sql_comment_column .= strtr(\TM\SQL_CREATE_COMMENT_COLUMN,
 			[
 				"{table}" => static::_table(true),
 				"{column}" => $c->column,
-				"{comment}" => pg_escape_string($c->name)
+				"{comment}" => $comment
 			]);
 			$sql_comment_column .= "\n";
 		}
@@ -178,15 +201,6 @@ trait Create
 		/* DEFAULT SQL */
 		if ($column->default_sql !== null)
 			return " DEFAULT" . $column->default_sql;
-
-		/* DEFAULT NULL */
-		if ($column->default === null)
-		{
-			if ($column->null)
-				return " DEFAULT NULL";
-			else
-				return "";
-		}
 
 		/* DEFAULT */
 		if ($column->default !== null)
@@ -221,6 +235,26 @@ trait Create
 		}
 
 		return "";
+	}
+
+	/**
+	 * Вычислить выбранные пользователем данные
+	 *
+	 * @param \TM\Column $column
+	 * @return object
+	 */
+	private static function _column_data_used (\TM\Column $column) : object
+	{
+		$used = new \stdClass();
+		$default = new \TM\Column();
+
+		foreach ($column as $param => $value)
+		{
+			if ($column->{$param} !== $default->{$param})
+				$used->{$param} = $value;
+		}
+
+		return $used;
 	}
 }
 ?>
