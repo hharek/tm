@@ -48,20 +48,20 @@ class Table
 	 *
 	 * @var Column
 	 */
-	private static $_primary = [];
+	protected static $_primary;
 
 	/**
 	 * Уникальные ключи
 	 *
 	 * @var Column[]
 	 */
-	private static $_unique = [];
+	protected static $_unique = [];
 
 	/**
 	 * Столбцы используемые по умолчанию для сортировки выборки
 	 *
 	 * @var Column[]
 	 */
-	private static $_order = [];
+	protected static $_order = [];
 }
 ?>

@@ -5,7 +5,7 @@ namespace TM\Type;
  * Порядковый номер. Первичный ключ
  * Рекомендуется всегда добавлять в таблицу
  */
-class Id extends Serial
+class ID extends Serial
 {
 	public $primary = true;
 }

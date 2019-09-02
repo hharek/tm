@@ -58,12 +58,12 @@ trait Create
 	/**
 	 * @var \TM\Column
 	 */
-	private static $_primary = [];
+	protected static $_primary;
 
 	/**
 	 * @var \TM\Column[]
 	 */
-	private static $_unique = [];
+	protected static $_unique = [];
 
 	/**
 	 * Создание таблицы
@@ -72,21 +72,48 @@ trait Create
 	 */
 	public static function create (bool $drop_if_exist = false)
 	{
-		$drop_table = "";
-		if ($drop_if_exist)
-			$drop_table = strtr(\TM\SQL_CREATE_DROP_TABLE, ["{table}" => static::_table(true)]);
+		static::_meta();
 
-		$fileds = "";
+		/* DROP TABLE */
+		$sql_drop_table = "";
+		if ($drop_if_exist)
+			$sql_drop_table = strtr(\TM\SQL_CREATE_DROP_TABLE, ["{table}" => static::_table(true)]) . "\n";
+
+		/* Столбцы */
+		$sql_fileds = "";
 		foreach (static::$columns as $c)
 		{
-			$fileds .= strtr(\TM\SQL_CREATE_COLUMN,
+			$sql_fileds .= "\t";
+			$sql_fileds .= strtr(\TM\SQL_CREATE_COLUMN,
 			[
 				"{column}" 	=> '"' . $c->column . '"',
 				"{type}" 	=> $c->type_sql,
 				"{null}" 	=> $c->null ? "" : " NOT NULL",
 				"{default}" => static::_create_default_sql($c)
 			]);
+			$sql_fileds .= ",\n";
 		}
+
+		/* Первичный ключ */
+		$primary_column = static::$_primary->column;
+		$sql_primary =
+<<<SQL
+\tPRIMARY KEY ("{$primary_column}")
+SQL;
+
+		/* Уникальные ключи */
+		$sql_unique = "";
+		foreach (static::$_unique as $u)
+		{
+			$unique_columns = array_column((array)$u, "column");
+			$sql_unique_columns = implode('","', $unique_columns);
+			$sql_unique .=
+<<<SQL
+\tUNIQUE ({$sql_unique_columns})
+SQL;
+		}
+
+
 	}
 
 	/**

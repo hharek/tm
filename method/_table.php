@@ -22,7 +22,7 @@ trait _Table
 	 * @param boolean $quotes
 	 * @return string
 	 */
-	private static function _table(bool $quotes = false) : string
+	protected static function _table(bool $quotes = false) : string
 	{
 		if ($quotes)
 		{

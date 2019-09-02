@@ -14,22 +14,22 @@ trait _Meta
 	/**
 	 * @var \TM\Column
 	 */
-	private static $_primary = [];
+	protected static $_primary;
 
 	/**
 	 * @var \TM\Column[]
 	 */
-	private static $_unique = [];
+	protected static $_unique = [];
 
 	/**
 	 * @var \TM\Column[]
 	 */
-	private static $_order = [];
+	protected static $_order = [];
 
 	/**
 	 * Собираем информацию по таблице
 	 */
-	public static function _meta ()
+	protected static function _meta ()
 	{
 		/* Первичные ключи */
 		foreach (static::$columns as $c)

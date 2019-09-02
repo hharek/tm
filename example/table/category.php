@@ -1,4 +1,6 @@
 <?php
+use \TM\Type;
+
 /**
  * Категория
  */
@@ -10,14 +12,14 @@ class Category extends TM\Table
 }
 
 /* Поля */
-$column = new \TM\Type\Id();
-$column->column = "ID";
-$column->name = "Порядковый номер";
-Category::$columns[] = $column;
+$c = new Type\ID();
+$c->column = "ID";
+$c->name = "Порядковый номер";
+Category::$columns[] = $c;
 
-$column = new \TM\Type\Str();
-$column->column = "Name";
-$column->name = "Наименование";
-$column->unique = true;
-Category::$columns[] = $column;
+$c = new Type\Str();
+$c->column = "Name";
+$c->name = "Наименование";
+$c->unique = true;
+Category::$columns[] = $c;
 ?>
