@@ -8,8 +8,6 @@ use TM\Exception;
  */
 trait TCheck
 {
-	use _Meta;
-
 	/**
 	 * @var string
 	 */
@@ -29,16 +27,6 @@ trait TCheck
 	 * @var \TM\Column[]
 	 */
 	public static $columns = [];
-
-	/**
-	 * @var \TM\Column
-	 */
-	private static $_primary = [];
-
-	/**
-	 * @var \TM\Column[]
-	 */
-	private static $_unique = [];
 
 	/**
 	 * Проверка структуры таблицы и класса
