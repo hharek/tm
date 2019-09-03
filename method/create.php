@@ -52,8 +52,9 @@ namespace TM\Method;
  */
 trait Create
 {
-	use _Meta,
-		_Table;
+	use _Table,
+		_Meta,
+		Debug;
 
 	/**
 	 * @var string
@@ -74,16 +75,6 @@ trait Create
 	 * @var \TM\Column[]
 	 */
 	public static $columns = [];
-
-	/**
-	 * @var \TM\Column
-	 */
-	protected static $_primary;
-
-	/**
-	 * @var \TM\Column[]
-	 */
-	protected static $_unique = [];
 
 	/**
 	 * Создание таблицы

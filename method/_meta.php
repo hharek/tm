@@ -12,16 +12,23 @@ trait _Meta
 	public static $columns = [];
 
 	/**
+	 * Сведения по первичному ключу
+	 * Может быть только один столбец
+	 *
 	 * @var \TM\Column
 	 */
 	protected static $_primary;
 
 	/**
+	 * Уникальные ключи
+	 *
 	 * @var \TM\Column[]
 	 */
 	protected static $_unique = [];
 
 	/**
+	 * Столбцы используемые по умолчанию для сортировки выборки
+	 *
 	 * @var \TM\Column[]
 	 */
 	protected static $_order = [];
@@ -29,7 +36,7 @@ trait _Meta
 	/**
 	 * Собираем информацию по таблице
 	 */
-	protected static function _meta ()
+	private static function _meta ()
 	{
 		/* Первичные ключи */
 		foreach (static::$columns as $c)

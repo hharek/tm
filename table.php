@@ -9,9 +9,11 @@ namespace TM;
  */
 class Table
 {
-	use Method\_Meta,
+	use Method\_Table,
+		Method\_Meta,
 		Method\TCheck,
-		Method\Create;
+		Method\Create,
+		Method\Debug;
 
 	/**
 	 * Наименование схемы
@@ -41,27 +43,5 @@ class Table
 	 * @var Column[]
 	 */
 	public static $columns = [];
-
-	/**
-	 * Сведения по первичному ключу
-	 * Может быть только один столбец
-	 *
-	 * @var Column
-	 */
-	protected static $_primary;
-
-	/**
-	 * Уникальные ключи
-	 *
-	 * @var Column[]
-	 */
-	protected static $_unique = [];
-
-	/**
-	 * Столбцы используемые по умолчанию для сортировки выборки
-	 *
-	 * @var Column[]
-	 */
-	protected static $_order = [];
 }
 ?>

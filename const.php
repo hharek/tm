@@ -6,4 +6,5 @@ const PHP_TYPES = ["string", "int", "integer", "float", "double", "real", "bool"
 const PGSQL_BOOLEAN_TRUE = ["true", "yes", "on", "1"];																/* Строка интерпретируемая как true для булёвого типа  */
 const PGSQL_BOOLEAN_FALSE = ["false", "no", "off", "0"];															/* Строка интерпретируемая как false для булёвого типа */
 const EQUAL_ALLOW = ["=", "like", "ilike"];																			/* Допустимые значения для оператора сравнения */
+const DEBUG_TYPE = ["default", "without_value", "prepare", "json"];													/* Отладка. Допустимые типы отображения запроса */
 ?>
