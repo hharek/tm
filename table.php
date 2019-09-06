@@ -2,19 +2,10 @@
 namespace TM;
 
 /**
- * Таблица
- * Основной класс в TM. Каждая таблица реализуется классом-потомком этого класса.
- *
- * @package TM
+ * Основные параметры таблицы
  */
-class Table
+trait Table_Params
 {
-	use Method\_Table,
-		Method\_Meta,
-		Method\TCheck,
-		Method\Create,
-		Method\Debug;
-
 	/**
 	 * Наименование схемы
 	 *
@@ -43,5 +34,19 @@ class Table
 	 * @var Column[]
 	 */
 	public static $columns = [];
+}
+
+/**
+ * Таблица
+ * Основной класс в TM. Каждая таблица реализуется классом-потомком этого класса.
+ */
+class Table
+{
+	use Table_Params,
+		Method\_Table,
+		Method\_Meta,
+		Method\TCheck,
+		Method\Create,
+		Method\Debug;
 }
 ?>

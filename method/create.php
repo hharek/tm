@@ -52,29 +52,10 @@ namespace TM\Method;
  */
 trait Create
 {
-	use _Table,
+	use \TM\Table_Params,
+		_Table,
 		_Meta,
 		Debug;
-
-	/**
-	 * @var string
-	 */
-	public static $schema = "public";
-
-	/**
-	 * @var string
-	 */
-	public static $table;
-
-	/**
-	 * @var string
-	 */
-	public static $name;
-
-	/**
-	 * @var \TM\Column[]
-	 */
-	public static $columns = [];
 
 	/**
 	 * Создание таблицы

@@ -2,19 +2,11 @@
 namespace TM\Method;
 
 /**
- * Собираем информацию по таблице
+ * Получить имя таблицы
  */
 trait _Table
 {
-	/**
-	 * @var string
-	 */
-	public static $schema = "public";
-
-	/**
-	 * @var string
-	 */
-	public static $table;
+	use \TM\Table_Params;
 
 	/**
 	 * Получить имя таблицы

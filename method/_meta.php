@@ -6,10 +6,7 @@ namespace TM\Method;
  */
 trait _Meta
 {
-	/**
-	 * @var \TM\Column[]
-	 */
-	public static $columns = [];
+	use \TM\Table_Params;
 
 	/**
 	 * Сведения по первичному ключу

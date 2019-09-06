@@ -4,32 +4,14 @@ namespace TM\Method;
 use TM\Exception;
 
 /**
- * Создание таблицы
+ * Проверка класса таблицы
  */
 trait TCheck
 {
-	/**
-	 * @var string
-	 */
-	public static $schema = "public";
+	use \TM\Table_Params;
 
 	/**
-	 * @var string
-	 */
-	public static $table;
-
-	/**
-	 * @var string
-	 */
-	public static $name;
-
-	/**
-	 * @var \TM\Column[]
-	 */
-	public static $columns = [];
-
-	/**
-	 * Проверка структуры таблицы и класса
+	 * Проверка класса таблицы
 	 */
 	public static function tcheck ()
 	{
