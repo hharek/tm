@@ -4,6 +4,6 @@ require "settings.php";
 require "table/category.php";
 require "table/product.php";
 
-Category::create(true, true);
-Product::create(true, true);
+Category::create(true);
+Product::create(true);
 ?>

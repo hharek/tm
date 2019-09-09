@@ -5,7 +5,6 @@ namespace TM;
 const SQL_CREATE =
 <<<SQL
 {drop_table}
-
 CREATE TABLE {table}
 (
 {column}{primary}{unique}
@@ -55,7 +54,8 @@ trait Create
 	use \TM\Table_Params,
 		_Table,
 		_Meta,
-		Debug;
+		Debug,
+		DB_Conn;
 
 	/**
 	 * Создание таблицы
@@ -63,7 +63,7 @@ trait Create
 	 * @param bool $drop_if_exist Удалять таблицу если существует перед CREATE
 	 * @param bool $tm_comment Добавлять специальные комментарии
 	 */
-	public static function create (bool $drop_if_exist = false, bool $tm_comment = false)
+	public static function create (bool $drop_if_exist = false, bool $tm_comment = true)
 	{
 		/* Проверяем правильность заполнение класса */
 		static::tcheck();
@@ -159,7 +159,22 @@ trait Create
 			"{comment_column}" => $sql_comment_column,
 		]);
 
-		echo $sql;
+		/* Отладка */
+		if (static::$debug)
+		{
+			static::_debug_query($sql);
+			return;
+		}
+
+		/* Выполнить запрос */
+		if (!static::$db_conn)
+			throw new \Exception("CREATE. Невозможно выполнить запрос. Не назначен ресурс подключения.");
+
+		$result = pg_query(static::$db_conn, $sql);
+		if ($result === false)
+			throw new \Exception("CREATE. Ошибка при выполнении запроса.");
+
+		pg_free_result($result);
 	}
 
 	/**
