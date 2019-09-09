@@ -1,6 +1,7 @@
 <?php
-const DB_HOST = "localhost";
-const DB_USER = "user";
-const DB_PASS = "***";
-const DB_NAME = "my";
+const DB_HOST       = "localhost";
+const DB_PORT       = "5432";
+const DB_USER       = "user";
+const DB_PASSWORD   = "***";
+const DB_NAME       = "my";
 ?>
