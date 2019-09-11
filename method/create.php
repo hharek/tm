@@ -53,6 +53,7 @@ trait Create
 {
 	use \TM\Table_Params,
 		_Table,
+		TCheck,
 		_Meta,
 		Debug,
 		DB_Conn;

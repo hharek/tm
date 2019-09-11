@@ -47,6 +47,7 @@ class Table
 		Method\_Meta,
 		Method\TCheck,
 		Method\Create,
-		Method\Debug;
+		Method\Debug,
+		Method\_Info;
 }
 ?>
