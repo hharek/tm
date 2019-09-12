@@ -48,6 +48,7 @@ class Table
 		Method\TCheck,
 		Method\Create,
 		Method\Debug,
-		Method\_Info;
+		Method\_Info,
+		Method\Show_Init;
 }
 ?>

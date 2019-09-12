@@ -117,7 +117,7 @@ trait Create
 				"table" => static::$table,
 				"name" => static::$name,
 			];
-			$comment .= " | " . pg_escape_string(json_encode($table_data, JSON_UNESCAPED_UNICODE));
+			$comment .= \TM\SQL_COMMENT_SEPARATOR . pg_escape_string(json_encode($table_data, JSON_UNESCAPED_UNICODE));
 		}
 
 		$sql_comment_table = strtr(\TM\SQL_CREATE_COMMENT_TABLE,
@@ -135,7 +135,7 @@ trait Create
 			if ($tm_comment) /* Специальный комментарий по столбцу */
 			{
 				$data = static::_column_data_used($c);
-				$comment .= " | " . pg_escape_string(json_encode($data, JSON_UNESCAPED_UNICODE));
+				$comment .= \TM\SQL_COMMENT_SEPARATOR . pg_escape_string(json_encode($data, JSON_UNESCAPED_UNICODE));
 			}
 
 			/* SQL */
@@ -234,6 +234,7 @@ trait Create
 	private static function _column_data_used (\TM\Column $column) : object
 	{
 		$used = new \stdClass();
+		$used->class = get_class($column);
 		$default = new \TM\Column();
 
 		foreach ($column as $param => $value)

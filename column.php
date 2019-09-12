@@ -311,6 +311,16 @@ class Column
 
 		return $value;
 	}
+
+	/**
+	 * Метод проверящий столбец таблицы на соответствие типу
+	 *
+	 * @param array $info
+	 */
+	public static function verify (array $info)
+	{
+		return false;
+	}
 }
 
 ?>

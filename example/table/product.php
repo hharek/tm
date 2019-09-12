@@ -21,7 +21,7 @@ $c->column = "Articul";
 $c->name = "Артикул";
 $c->unique = true;
 $c->require = false;
-$c->default = "";
+$c->null = true;
 $c->empty = true;
 Product::$columns[] = $c;
 

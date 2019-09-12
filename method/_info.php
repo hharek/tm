@@ -13,20 +13,13 @@ trait _Info
 	/**
 	 * Получить информацию по таблице и по колонкам табилицы
 	 *
-	 * @param string|null $schema
-	 * @param string|null $table
+	 * @param string $schema
+	 * @param string $table
 	 * @return array
 	 */
-	private static function _info (string $table = null, string $schema = 'public')
+	private static function _info (string $schema, string $table) : array
 	{
 		$data = [];
-
-		/* Проверка */
-		if ($table === null)
-		{
-			$schema = static::$schema;
-			$table = static::$table;
-		}
 		$data['schema'] = $schema;
 		$data['table'] = $table;
 
