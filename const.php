@@ -8,4 +8,5 @@ const PGSQL_BOOLEAN_FALSE = ["false", "no", "off", "0"];															/* Стр
 const EQUAL_ALLOW = ["=", "like", "ilike"];																			/* Допустимые значения для оператора сравнения */
 const DEBUG_TYPE = ["default", "without_value", "prepare", "json"];													/* Отладка. Допустимые типы отображения запроса */
 const SQL_COMMENT_SEPARATOR = " |TM| ";																				/* Разделитель данных и служебных данных в SQL комментариях */
+const PGSQL_JSON_VERIFY_TYPE = "array";																				/* Если тип столбца json|jsonb каким будет его PHP-тип: array|object */
 ?>

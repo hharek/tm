@@ -17,7 +17,12 @@ class Enum extends \TM\Column
 	 */
 	public $enum_values = [];
 
-	public static function check($value, Enum $column = null): bool
+	/**
+	 * @param mixed $value
+	 * @param \TM\Column|null $column
+	 * @return bool
+	 */
+	public static function check($value, \TM\Column $column = null): bool
 	{
 		if (!is_scalar($value))
 			throw new \Exception("Недопустимое значение");

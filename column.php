@@ -191,11 +191,18 @@ class Column
 					throw new \Exception("Недопустимое значение.");
 				break;
 
-			case "int":
-			case "integer":
 			case "float":
 			case "double":
 			case "real":
+				if (is_string($value))
+					$value = str_replace(",", ".", $value);
+
+				if (!is_numeric($value))
+					throw new \Exception("Не является числом.");
+				break;
+
+			case "int":
+			case "integer":
 				if (!is_numeric($value))
 					throw new \Exception("Не является числом.");
 				break;
@@ -260,6 +267,13 @@ class Column
 				}
 				break;
 
+			case "float":
+			case "double":
+			case "real":
+				if (is_string($value))
+					return str_replace(",", ".", $value);
+				break;
+
 			case "array":
 			case "object":
 				return json_encode($value, PREPARE_JSON_ENCODE);
@@ -316,8 +330,9 @@ class Column
 	 * Метод проверящий столбец таблицы на соответствие типу
 	 *
 	 * @param array $info
+	 * @return bool
 	 */
-	public static function verify (array $info)
+	public static function verify (array $info) : bool
 	{
 		return false;
 	}

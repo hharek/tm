@@ -33,6 +33,19 @@ class _String extends \TM\Column
 
 		return true;
 	}
+
+	public static function verify(array $info): bool
+	{
+		/* https://postgrespro.ru/docs/postgresql/11/datatype-character */
+
+		if (!in_array($info['data_type'], ["character varying", "character"]))
+			return false;
+
+		if ((int)$info['character_maximum_length'] > 255)
+			return false;
+
+		return true;
+	}
 }
 
 /* Алиасы */

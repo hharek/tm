@@ -235,7 +235,7 @@ trait Create
 	{
 		$used = new \stdClass();
 		$used->class = get_class($column);
-		$default = new \TM\Column();
+		$default = new $used->class;
 
 		foreach ($column as $param => $value)
 		{

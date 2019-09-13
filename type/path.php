@@ -4,7 +4,7 @@ namespace TM\Type;
 /**
  * Путь к файлу или каталогу
  */
-class Url_Path extends \TM\Column
+class Path extends \TM\Column
 {
 	public $type_sql = "varchar(255)";
 	public $type_php = "string";

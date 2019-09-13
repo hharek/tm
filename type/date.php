@@ -30,7 +30,12 @@ class Date extends \TM\Column
 		return date ("Y-m-d", strtotime($value));
 	}
 
-	public static function process(string $value, Date $column = null)
+	/**
+	 * @param string $value
+	 * @param \TM\Column|Date|null $column
+	 * @return string
+	 */
+	public static function process(string $value, \TM\Column $column = null)
 	{
 		return date ($column->date_format, strtotime($value));
 	}

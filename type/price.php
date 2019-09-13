@@ -6,7 +6,7 @@ namespace TM\Type;
  */
 class Price extends \TM\Column
 {
-	public $type_sql = "numeric(10,2)";
+	public $type_sql = "money";
 	public $type_php = "float";
 
 	public static function check($value, \TM\Column $column = null): bool

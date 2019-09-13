@@ -22,6 +22,16 @@ class _Int extends \TM\Column
 
 		return true;
 	}
+
+	public static function verify(array $info): bool
+	{
+		/* https://postgrespro.ru/docs/postgresql/11/datatype-numeric#DATATYPE-INT */
+
+		if (!in_array($info['data_type'], ["smallint", "integer", "bigint"]))
+			return false;
+
+		return true;
+	}
 }
 
 /* Алиасы */
