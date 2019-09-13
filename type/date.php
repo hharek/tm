@@ -39,5 +39,15 @@ class Date extends \TM\Column
 	{
 		return date ($column->date_format, strtotime($value));
 	}
+
+	public static function verify(array $info): bool
+	{
+		/* https://postgrespro.ru/docs/postgresql/11/datatype-datetime */
+
+		if ($info['data_type'] === "date")
+			return true;
+
+		return false;
+	}
 }
 ?>

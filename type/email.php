@@ -20,5 +20,16 @@ class Email extends \TM\Column
 
 		return true;
 	}
+
+	public static function verify(array $info): bool
+	{
+		if (!in_array($info['data_type'], ["character varying", "character"]))
+			return false;
+
+		if (stripos($info['column_name'], "email") === false && stripos($info['column_name'], "e-mail") === false)
+			return false;
+
+		return true;
+	}
 }
 ?>

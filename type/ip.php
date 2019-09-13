@@ -20,5 +20,15 @@ class IP extends \TM\Column
 
 		return true;
 	}
+
+	public static function verify(array $info): bool
+	{
+		/* https://postgrespro.ru/docs/postgresql/11/datatype-net-types */
+
+		if (in_array($info['data_type'], ["inet", "cidr"]))
+			return true;
+
+		return false;
+	}
 }
 ?>

@@ -13,10 +13,10 @@ class _Bool extends \TM\Column
 	{
 		/* https://postgrespro.ru/docs/postgresql/11/datatype-boolean */
 
-		if ($info['data_type'] !== "boolean")
-			return false;
+		if ($info['data_type'] === "boolean")
+			return true;
 
-		return true;
+		return false;
 	}
 }
 

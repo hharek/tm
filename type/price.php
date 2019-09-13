@@ -30,5 +30,16 @@ class Price extends \TM\Column
 		else
 			return (string)$value;
 	}
+
+	public static function verify(array $info): bool
+	{
+		if ($info['data_type'] === "money")
+			return true;
+
+		if ($info['data_type'] === "numeric" && (int)$info['numeric_scale'] === 2)
+			return true;
+
+		return false;
+	}
 }
 ?>

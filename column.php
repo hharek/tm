@@ -328,8 +328,9 @@ class Column
 
 	/**
 	 * Метод проверящий столбец таблицы на соответствие типу
+	 * https://postgrespro.ru/docs/postgresql/11/datatype
 	 *
-	 * @param array $info
+	 * @param array $info Данные с таблицы "information_schema"."columns" + comment
 	 * @return bool
 	 */
 	public static function verify (array $info) : bool

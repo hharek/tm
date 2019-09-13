@@ -13,10 +13,10 @@ class _Float extends \TM\Column
 	{
 		/* https://postgrespro.ru/docs/postgresql/11/datatype-numeric#DATATYPE-FLOAT */
 
-		if (!in_array($info['data_type'], ["real", "double precision"]))
-			return false;
+		if (in_array($info['data_type'], ["real", "double precision"]))
+			return true;
 
-		return true;
+		return false;
 	}
 }
 

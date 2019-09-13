@@ -27,10 +27,10 @@ class _Int extends \TM\Column
 	{
 		/* https://postgrespro.ru/docs/postgresql/11/datatype-numeric#DATATYPE-INT */
 
-		if (!in_array($info['data_type'], ["smallint", "integer", "bigint"]))
-			return false;
+		if (in_array($info['data_type'], ["smallint", "integer", "bigint"]))
+			return true;
 
-		return true;
+		return false;
 	}
 }
 

@@ -17,10 +17,10 @@ class _Array extends \TM\Column
 		if (\TM\PGSQL_JSON_VERIFY_TYPE !== "array")
 			return false;
 
-		if (!in_array($info['data_type'], ["json", "jsonb"]))
-			return false;
+		if (in_array($info['data_type'], ["json", "jsonb"]))
+			return true;
 
-		return true;
+		return false;
 	}
 }
 

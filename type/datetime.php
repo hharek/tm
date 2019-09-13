@@ -23,5 +23,15 @@ class Datetime extends \TM\Column
 	{
 		return date ("Y-m-d H:i:s", strtotime($value));
 	}
+
+	public static function verify(array $info): bool
+	{
+		/* https://postgrespro.ru/docs/postgresql/11/datatype-datetime */
+
+		if (in_array($info['data_type'], ["timestamp without time zone", "timestamp with time zone"]))
+			return true;
+
+		return false;
+	}
 }
 ?>
