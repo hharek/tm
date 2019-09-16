@@ -41,7 +41,7 @@ SQL;
 		$result = pg_query_params(static::$db_conn, $query, [$schema, $table]);
 		$column = pg_fetch_all($result);
 		if (empty($column))
-			throw new \Exception("INFO. Указана несуществующая таблица.");
+			throw new \Exception("INFO. Указана несуществующая таблица или у таблицы отсутствуют столбцы.");
 		pg_free_result($result);
 
 		/* Комментарии по таблице и по колонкам */
@@ -60,11 +60,14 @@ SQL;
 
 		/* Комментарий к таблице */
 		$data['comment'] = "";
-		foreach ($comment as $c)
+		if (!empty($comment))
 		{
-			if ((int)$c['objsubid'] == 0)
+			foreach ($comment as $c)
 			{
-				$data['comment'] = $c['description'];
+				if ((int)$c['objsubid'] == 0)
+				{
+					$data['comment'] = $c['description'];
+				}
 			}
 		}
 
@@ -72,16 +75,121 @@ SQL;
 		foreach ($column as &$col)
 		{
 			$col['comment'] = "";
-			foreach ($comment as $c)
+			if (!empty($comment))
 			{
-				if ($col['ordinal_position'] == $c['objsubid'])
-					$col['comment'] = $c['description'];
+				foreach ($comment as $c)
+				{
+					if ($col['ordinal_position'] == $c['objsubid'])
+						$col['comment'] = $c['description'];
+				}
 			}
 		}
 		unset($col);
-		$data['column'] = $column;
 
+		/* Первичные ключи */
+		$primary = static::_primary($schema, $table);
+		foreach ($column as &$col)
+		{
+			$col['primary'] = false;
+			if (in_array($col['column_name'], $primary))
+			{
+				$col['primary'] = true;
+
+				/* Первичный ключ состоит из одного или более столбцов */
+				if (count($primary) > 1)
+					$col['primary_column'] = $primary;
+			}
+		}
+		unset($col);
+
+		/* Уникальные ключи */
+		$unique = static::_unique($schema, $table);
+		foreach ($column as &$col)
+		{
+			$col['unique'] = false;
+			foreach ($unique as $unique_column)
+			{
+				if (in_array($col['column_name'], $unique_column))
+				{
+					$col['unique'] = true;
+
+					/* Уникальный ключ состоит из одного или более столбцов */
+					if (count($unique_column) > 1)
+						$col['unique_column'] = $unique_column;
+				}
+			}
+		}
+		unset($col);
+
+		$data['column'] = $column;
 		return $data;
+	}
+
+	/**
+	 * Первичные ключи по таблице
+	 *
+	 * @param string $schema
+	 * @param string $table
+	 * @return array
+	 */
+	private static function _primary (string $schema, string $table) : array
+	{
+		$query =
+<<<SQL
+SELECT
+	"a"."attname"
+FROM
+	"pg_index" as "i" JOIN
+	"pg_attribute" as "a" ON (i.indrelid = a.attrelid AND a.attnum = ANY(i.indkey))
+WHERE
+	"i"."indrelid" = $1::regclass AND
+	"i"."indisprimary" = true
+SQL;
+		$result = pg_query_params(static::$db_conn, $query, [$schema . "." . $table]);
+		$primary = pg_fetch_all_columns($result, 0);
+		pg_free_result($result);
+		return $primary;
+	}
+
+	/**
+	 * Уникальные ключи по таблице
+	 *
+	 * @param string $schema
+	 * @param string $table
+	 * @return array
+	 */
+	private static function _unique (string $schema, string $table) : array
+	{
+		$query =
+<<<SQL
+SELECT
+	"a"."attname",
+	"i"."indkey"
+FROM
+	"pg_index" as "i" JOIN
+	"pg_attribute" as "a" ON (i.indrelid = a.attrelid AND a.attnum = ANY(i.indkey))
+WHERE
+	"i"."indrelid" = $1::regclass AND
+	"i"."indisunique" = true AND
+	"i"."indisprimary" = false
+SQL;
+		$result = pg_query_params(static::$db_conn, $query, [$schema . "." . $table]);
+		$index = pg_fetch_all($result);
+		pg_free_result($result);
+
+		$unique = [];
+		foreach ($index as $i)
+		{
+			$key = $i['indkey'];
+			if (empty($unique[$key]))
+				$unique[$key] = [];
+
+			$unique[$key][] = $i['attname'];
+		}
+
+		$unique = array_values($unique);
+
+		return $unique;
 	}
 }
 ?>
