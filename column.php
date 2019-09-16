@@ -331,9 +331,10 @@ class Column
 	 * https://postgrespro.ru/docs/postgresql/11/datatype
 	 *
 	 * @param array $info Данные с таблицы "information_schema"."columns" + comment
+	 * @param string $table
 	 * @return bool
 	 */
-	public static function verify (array $info) : bool
+	public static function verify (array $info, string $table) : bool
 	{
 		return false;
 	}

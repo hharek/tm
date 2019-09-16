@@ -24,7 +24,7 @@ class Datetime extends \TM\Column
 		return date ("Y-m-d H:i:s", strtotime($value));
 	}
 
-	public static function verify(array $info): bool
+	public static function verify(array $info, string $table): bool
 	{
 		/* https://postgrespro.ru/docs/postgresql/11/datatype-datetime */
 

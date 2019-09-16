@@ -31,7 +31,7 @@ class Price extends \TM\Column
 			return (string)$value;
 	}
 
-	public static function verify(array $info): bool
+	public static function verify(array $info, string $table): bool
 	{
 		if ($info['data_type'] === "money")
 			return true;

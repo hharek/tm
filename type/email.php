@@ -21,7 +21,7 @@ class Email extends \TM\Column
 		return true;
 	}
 
-	public static function verify(array $info): bool
+	public static function verify(array $info, string $table): bool
 	{
 		if (!in_array($info['data_type'], ["character varying", "character"]))
 			return false;

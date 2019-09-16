@@ -34,7 +34,7 @@ class _String extends \TM\Column
 		return true;
 	}
 
-	public static function verify(array $info): bool
+	public static function verify(array $info, string $table): bool
 	{
 		/* https://postgrespro.ru/docs/postgresql/11/datatype-character */
 

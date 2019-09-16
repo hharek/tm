@@ -69,7 +69,7 @@ trait Show_Init
 		$php_code_column_init = "";
 		foreach ($info['column'] as $c)
 		{
-			$php_code_column_init .= "\n\n" . static::_show_init_column($c);
+			$php_code_column_init .= "\n\n" . static::_show_init_column($c, $table);
 		}
 
 		return $code;
@@ -79,9 +79,10 @@ trait Show_Init
 	 * Показать код создания объекта-столбца потомка \TM\Column
 	 *
 	 * @param array $info
+	 * @param string $table
 	 * @return string
 	 */
-	private static function _show_init_column (array $info) : string
+	private static function _show_init_column (array $info, string $table) : string
 	{
 		$comment = $info['comment'];
 		$comment_explode = explode(\TM\SQL_COMMENT_SEPARATOR, $comment);
@@ -93,7 +94,7 @@ trait Show_Init
 		}
 		else
 		{
-			$column = static::_column_verify($info);
+			$column = static::_column_verify($info, $table);
 		}
 
 		print_r($column);
@@ -116,9 +117,10 @@ trait Show_Init
 	 * На основании данных о колонке определить тип
 	 *
 	 * @param array $info
+	 * @param string $table
 	 * @return array
 	 */
-	private static function _column_verify (array $info) : array
+	private static function _column_verify (array $info, string $table) : array
 	{
 		$data = [];
 
@@ -135,7 +137,7 @@ trait Show_Init
 		$data['class'] = "\TM\Column";
 		foreach ($class_type as $class)
 		{
-			if (call_user_func($class . "::verify", $info))
+			if (call_user_func($class . "::verify", $info, $table))
 			{
 				$data['class'] = $class;
 				break;
