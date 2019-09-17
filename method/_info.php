@@ -121,6 +121,25 @@ SQL;
 		}
 		unset($col);
 
+		/* Неуникальные индексы */
+		$index = static::_index($schema, $table);
+		foreach ($column as &$col)
+		{
+			$col['index'] = false;
+			foreach ($index as $index_column)
+			{
+				if (in_array($col['column_name'], $index_column))
+				{
+					$col['index'] = true;
+
+					/* Уникальный ключ состоит из одного или более столбцов */
+					if (count($index_column) > 1)
+						$col['index_column'] = $index_column;
+				}
+			}
+		}
+		unset($col);
+
 		$data['column'] = $column;
 		return $data;
 	}
@@ -174,11 +193,11 @@ WHERE
 	"i"."indisprimary" = false
 SQL;
 		$result = pg_query_params(static::$db_conn, $query, [$schema . "." . $table]);
-		$index = pg_fetch_all($result);
+		$pg_index = pg_fetch_all($result);
 		pg_free_result($result);
 
 		$unique = [];
-		foreach ($index as $i)
+		foreach ($pg_index as $i)
 		{
 			$key = $i['indkey'];
 			if (empty($unique[$key]))
@@ -190,6 +209,47 @@ SQL;
 		$unique = array_values($unique);
 
 		return $unique;
+	}
+
+	/**
+	 * Не уникальные индексы
+	 *
+	 * @param string $schema
+	 * @param string $table
+	 * @return array
+	 */
+	private static function _index (string $schema, string $table) : array
+	{
+		$query =
+<<<SQL
+SELECT
+	"a"."attname",
+	"i"."indkey"
+FROM
+	"pg_index" as "i" JOIN
+	"pg_attribute" as "a" ON (i.indrelid = a.attrelid AND a.attnum = ANY(i.indkey))
+WHERE
+	"i"."indrelid" = $1::regclass AND
+	"i"."indisunique" = false AND
+	"i"."indisprimary" = false
+SQL;
+		$result = pg_query_params(static::$db_conn, $query, [$schema . "." . $table]);
+		$pg_index = pg_fetch_all($result);
+		pg_free_result($result);
+
+		$index = [];
+		foreach ($pg_index as $i)
+		{
+			$key = $i['indkey'];
+			if (empty($index[$key]))
+				$index[$key] = [];
+
+			$index[$key][] = $i['attname'];
+		}
+
+		$index = array_values($index);
+
+		return $index;
 	}
 }
 ?>

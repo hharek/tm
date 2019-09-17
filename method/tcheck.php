@@ -119,6 +119,19 @@ trait TCheck
 					throw new Exception("При указании параметра «unique_key» поле «unique» должно быть указано как «true».", static::$schema, static::$table, static::$name, $c);
 			}
 
+			/* Индексы */
+			if ($c->index !== true && $c->index !== false)
+				throw new Exception("Параметр «index» указан неверно. Можно указать только «true» или «false».", static::$schema, static::$table, static::$name, $c);
+
+			if ($c->index_key !== null)
+			{
+				if (!is_string($c->index_key))
+					throw new Exception("Параметр «index_key» указан неверно. Не является строкой.", static::$schema, static::$table, static::$name, $c);
+
+				if (!$c->index)
+					throw new Exception("При указании параметра «index_key» поле «index» должно быть указано как «true».", static::$schema, static::$table, static::$name, $c);
+			}
+
 			/* trim */
 			if ($c->trim !== true && $c->trim !== false)
 				throw new Exception("Параметр «trim» указан неверно. Можно указать только «true» или «false».", static::$schema, static::$table, static::$name, $c);

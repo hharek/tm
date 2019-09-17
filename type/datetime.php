@@ -10,6 +10,7 @@ class Datetime extends \TM\Column
 	public $type_php = "string";
 	public $default_sql = "now()";
 	public $require = false;
+	public $index = true;
 
 	public static function check($value, \TM\Column $column = null): bool
 	{

@@ -9,6 +9,7 @@ class IP extends \TM\Column
 {
 	public $type_sql = "inet";
 	public $type_php = "string";
+	public $index = true;
 
 	public static function check($value, \TM\Column $column = null): bool
 	{

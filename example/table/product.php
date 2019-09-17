@@ -45,6 +45,7 @@ $c->column = "Price";
 $c->name = "Цена";
 $c->require = false;
 $c->default = 0.00;
+$c->index = true;
 Product::$columns[] = $c;
 
 $c = new Type\Boolean();

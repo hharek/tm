@@ -92,12 +92,28 @@ class Column
 
 	/**
 	 * Наименование уникального индекса для столбца
-	 * Если в уникальном индексе используется один или более столбцов. Пример: CREATE UNIQUE INDEX "Name_UN" ON "product" ("Name", "Category_ID");
+	 * Указывать если в уникальном индексе используется один или более столбцов. Пример: CREATE UNIQUE INDEX "Name_UN" ON "product" ("Name", "Category_ID");
 	 *
 	 * @var string
 	 * @example "Name_UN"
 	 */
 	public $unique_key;
+
+	/**
+	 * Создан ли неуникальный индекс для этого столбца
+	 *
+	 * @var boolean
+	 */
+	public $index = false;
+
+	/**
+	 * Наименоване неуникального индекса
+	 * Указывать если столбец входит в составной индекс. Пример: CREATE INDEX "Price_Idx" ON "price" ("Price", "Category_ID")
+	 *
+	 * @var string
+	 * @example "Name_Idx"
+	 */
+	public $index_key;
 
 	/**
 	 * Является ли столбец первичным ключом.

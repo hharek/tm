@@ -10,6 +10,7 @@ CREATE TABLE {table}
 {column}{primary}{unique}
 );
 
+{index}
 {comment_table}
 {comment_column}
 SQL;
@@ -32,6 +33,11 @@ SQL;
 const SQL_CREATE_UNIQUE =
 <<<SQL
 \tUNIQUE ({column})
+SQL;
+
+const SQL_CREATE_INDEX =
+<<<SQL
+CREATE INDEX "{table}_idx{num}" ON "{table}" ({column});
 SQL;
 
 const SQL_CREATE_COMMENT_TABLE =
@@ -106,6 +112,20 @@ trait Create
 		}
 		$sql_unique = ",\n" . implode(",\n", $sql_unique_part);
 
+		/* Индексы */
+		$sql_index_part = [];
+		foreach (static::$_index as $key => $i)
+		{
+			$index_column = array_column((array)$i, "column");
+			$sql_index_part[] = strtr(\TM\SQL_CREATE_INDEX,
+			[
+				"{table}" => static::$table,
+				"{num}" => ++$key,
+				"{column}" => '"' . implode('", "', $index_column) . '"'
+			]);
+		}
+		$sql_index = implode("\n", $sql_index_part) . "\n";
+
 		/* Комментарий таблицы */
 		$comment = pg_escape_string(static::$name);
 
@@ -156,6 +176,7 @@ trait Create
 			"{column}" => $sql_column,
 			"{primary}" => $sql_primary,
 			"{unique}" => $sql_unique,
+			"{index}" => $sql_index,
 			"{comment_table}" => $sql_comment_table,
 			"{comment_column}" => $sql_comment_column,
 		]);

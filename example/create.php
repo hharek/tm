@@ -7,6 +7,6 @@ require "table/product.php";
 $db = pg_connect("host=" . DB_HOST . " port=" . DB_PORT . " dbname=" . DB_NAME . " user=" . DB_USER . " password=" . DB_PASSWORD);
 \TM\Table::db_conn($db);
 
-Category::create(true);
-Product::create(true);
+Category::create();
+Product::create();
 ?>

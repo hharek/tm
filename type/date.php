@@ -8,6 +8,7 @@ class Date extends \TM\Column
 {
 	public $type_sql = "date";
 	public $type_php = "string";
+	public $index = true;
 
 	/**
 	 * Формат представления даты

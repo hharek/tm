@@ -9,6 +9,7 @@ class Email extends \TM\Column
 	public $type_sql = "varchar(127)";
 	public $type_php = "string";
 	public $prepare = "strtolower";
+	public $unique = true;
 
 	public static function check($value, \TM\Column $column = null): bool
 	{

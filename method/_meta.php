@@ -24,6 +24,13 @@ trait _Meta
 	protected static $_unique = [];
 
 	/**
+	 * Неуникальные индексы
+	 *
+	 * @var \TM\Column[]
+	 */
+	protected static $_index = [];
+
+	/**
 	 * Столбцы используемые по умолчанию для сортировки выборки
 	 *
 	 * @var \TM\Column[]
@@ -51,7 +58,8 @@ trait _Meta
 		{
 			if ($c->unique)
 			{
-				$key = $c->unique_key ?? "UN_" . $key_num;
+				$key = $c->unique_key ?? "TM_UN_" . $key_num;
+				$key_num++;
 
 				if (empty(static::$_unique[$key]))
 					static::$_unique[$key] = [];
@@ -59,6 +67,24 @@ trait _Meta
 				static::$_unique[$key][] = $c;
 			}
 		}
+		static::$_unique = array_values(static::$_unique);
+
+		/* Неуникальные индексы */
+		$key_num = 1;
+		foreach (static::$columns as $c)
+		{
+			if ($c->index)
+			{
+				$key = $c->index_key ?? "TM_IDX_" . $key_num;
+				$key_num++;
+
+				if (empty(static::$_index[$key]))
+					static::$_index[$key] = [];
+
+				static::$_index[$key][] = $c;
+			}
+		}
+		static::$_index = array_values(static::$_index);
 
 		/* Столбцы сортировки */
 		foreach (static::$columns as $c)
