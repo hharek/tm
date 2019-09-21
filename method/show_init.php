@@ -15,7 +15,6 @@ class {class} extends TM\Table
 }
 PHP;
 
-
 namespace TM\Method;
 
 /**
@@ -90,10 +89,12 @@ trait Show_Init
 
 		if (!empty($tm_comment))
 		{
+			/* На основании TM-комментария определить тип */
 			$column = static::_column_verify_tm_comment($tm_comment);
 		}
 		else
 		{
+			/* На основании данных о колонке (information_schema) определить тип */
 			$column = static::_column_verify($info, $table);
 		}
 
@@ -114,7 +115,7 @@ trait Show_Init
 	}
 
 	/**
-	 * На основании данных о колонке определить тип
+	 * На основании данных о колонке (information_schema) определить тип
 	 *
 	 * @param array $info
 	 * @param string $table
@@ -131,7 +132,7 @@ trait Show_Init
 			$data['name'] = $info['comment'];
 
 		/* Все типы */
-		$class_type = static::_class_type();
+		$class_type = static::_class_type_verify();
 
 		/* Запускаем в каждом классе метод verify */
 		$data['class'] = "\TM\Column";
@@ -144,6 +145,9 @@ trait Show_Init
 			}
 		}
 
+		/* type_sql */
+
+
 		return $data;
 	}
 
@@ -152,7 +156,7 @@ trait Show_Init
 	 *
 	 * @return array
 	 */
-	private static function _class_type () : array
+	private static function _class_type_verify () : array
 	{
 		/* Подгружаем все классы TM\Type */
 		$type_dir = __DIR__ . "/../type";
@@ -167,31 +171,62 @@ trait Show_Init
 
 		/* Определяем классы */
 		$class_declared = get_declared_classes();
-		$class_type = [];
+		$class_type_ref = [];
 		foreach ($class_declared as $class)
 		{
 			if (substr($class, 0, 7) === "TM\Type")
-				$class_type[] = $class;
+				$class_type_ref[] = new \ReflectionClass($class);
 		}
 
 		/* Оставляем типы, у которых есть ненаследуемый статический метод verify() */
-		foreach ($class_type as $i => $class)
+		foreach ($class_type_ref as $i => $class)
 		{
-			$ref_class = new \ReflectionClass($class);
-			$method_verify = $ref_class->getMethod("verify");
-
-			if (!$method_verify->isStatic() || $method_verify->getDeclaringClass()->getName() !== $class)
-				unset($class_type[$i]);
+			/* @var \ReflectionClass $class */
+			$method_verify = $class->getMethod("verify");
+			if (!$method_verify->isStatic() || $method_verify->getDeclaringClass()->getName() !== $class->getName())
+				unset($class_type_ref[$i]);
 		}
 
-		/* Сортировка, примитивные типы вниз */
-		usort($class_type, function ($a, $b)
+		/* Сортировка. Классы родители ниже классов потомков */
+		usort($class_type_ref, function ($a, $b)
 		{
-			if (substr($a, 0, 9) === "TM\Type\_")
-				return 1;
-			else
-				return -1;
+			/* @var \ReflectionClass $a */
+			/* @var \ReflectionClass $b */
+
+			$parent = $a->getParentClass();
+			while (true)
+			{
+				if ($parent->getName() === "TM\Column")
+					break;
+
+				if ($parent->getName() === $b->getName())
+					return -1;
+
+				$parent = $parent->getParentClass();
+			}
+
+			$parent = $b->getParentClass();
+			while (true)
+			{
+				if ($parent->getName() === "TM\Column")
+					break;
+
+				if ($parent->getName() === $a->getName())
+					return +1;
+
+				$parent = $parent->getParentClass();
+			}
+
+			return +1;
 		});
+
+		/* В массиве сохраняем только имя класса */
+		$class_type = [];
+		foreach ($class_type_ref as $i)
+		{
+			/* @var \ReflectionClass $i */
+			$class_type[] = $i->getName();
+		}
 
 		return $class_type;
 	}
