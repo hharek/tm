@@ -98,7 +98,7 @@ trait Show_Init
 			$column = static::_column_verify($info, $table);
 		}
 
-		print_r($column);
+//		print_r($column);
 
 		return "";
 	}
@@ -145,7 +145,43 @@ trait Show_Init
 			}
 		}
 
-		/* type_sql */
+		/* Столбец */
+		/* @var $column \TM\Column */
+		$column = new $data['class'];
+		$column->column = $data['column'];
+		$column->name = $data['name'];
+
+		/* type_sql, type_php */
+		if ($data['class'] === "\TM\Column")
+		{
+			$type = static::_get_type($info);
+			$column->type_sql = $type['sql'];
+			$column->type_php = $type['php'];
+		}
+
+		/* default */
+		if ($info['column_default'] !== null)
+		{
+			if ($data['class'] !== "\TM\Column")
+			{
+				try
+				{
+					$result = call_user_func($data['class'] . "::check", $info['column_default'], $column);
+					if ($result === false)
+						throw new \Exception();
+
+					$column->default = call_user_func($data['class'] . "::process", $info['column_default'], $column);
+				}
+				catch (\Exception $e)
+				{
+					$column->default_sql = $info['column_default'];
+				}
+			}
+			else
+			{
+				$column->default_sql = $info['column_default'];
+			}
+		}
 
 
 		return $data;
@@ -229,6 +265,56 @@ trait Show_Init
 		}
 
 		return $class_type;
+	}
+
+	/**
+	 * Получить тип столбца на основании "information_schema"."columns"
+	 *
+	 * @param array $info
+	 * @return string
+	 */
+	private static function _get_type (array $info) : array
+	{
+		$dtype = $info['data_type'];
+
+		$type_sql = $dtype;
+		$type_php = "string";
+
+		if (in_array($dtype, ["character varying", "character", "text"]))
+		{
+			if (in_array($dtype, ["character varying", "character"]))
+				$type_sql = $dtype . "(" . $info['character_maximum_length'] . ")";
+			else if ($dtype === "text")
+				$type_sql = $dtype . "(" . $info['character_maximum_length'] . ")";
+
+			$type_php = "string";
+		}
+		elseif (in_array($dtype, ["smallint", "integer", "bigint"]))
+		{
+			$type_sql = $dtype;
+			$type_php = "int";
+		}
+		elseif (in_array($dtype, ["decimal", "numeric", "real", "double precision"]))
+		{
+			$type_sql = $dtype . "(" . $info['numeric_precision'] . ", " . $info['numeric_scale'] . ")";
+			$type_php = "float";
+		}
+		elseif ($dtype == "boolean")
+		{
+			$type_sql = "boolean";
+			$type_php = "boolean";
+		}
+		elseif (in_array($dtype, ["json", "jsonb"]))
+		{
+			$type_sql = $dtype;
+			$type_php = \TM\PGSQL_JSON_VERIFY_TYPE;
+		}
+
+		return
+		[
+			"sql" => $type_sql,
+			"php" => $type_php
+		];
 	}
 }
 ?>
