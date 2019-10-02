@@ -209,7 +209,10 @@ trait Create
 	{
 		/* DEFAULT SQL */
 		if ($column->default_sql !== null)
-			return " DEFAULT" . $column->default_sql;
+		{
+			$column->default_sql = strtr($column->default_sql, ["{table}" => static::$table, "{column}" => $column->column]);
+			return " DEFAULT " . $column->default_sql;
+		}
 
 		/* DEFAULT */
 		if ($column->default !== null)

@@ -98,7 +98,7 @@ trait Show_Init
 			$column = static::_column_verify($info, $table);
 		}
 
-//		print_r($column);
+		print_r($column);
 
 		return "";
 	}
@@ -131,7 +131,7 @@ trait Show_Init
 		if (!empty($info['comment']))
 			$data['name'] = $info['comment'];
 
-		/* Все типы */
+		/* Все типы. Список всех классов-типов */
 		$class_type = static::_class_type_verify();
 
 		/* Запускаем в каждом классе метод verify */
@@ -162,7 +162,22 @@ trait Show_Init
 		/* default */
 		if ($info['column_default'] !== null)
 		{
-			if ($data['class'] !== "\TM\Column")
+			/* Замена в $this->default_sql "{table}" и "{column}" на название таблицы и столбца */
+			if (!empty($column->default_sql))
+				$column->default_sql = strtr($column->default_sql, ["{table}" => $table, "{column}" => $info['column_name']]);
+
+			/* Неизвестный тип. Указываем как в инфо-схеме */
+			if ($data['class'] === "\TM\Column")
+			{
+				$column->default_sql = $info['column_default'];
+			}
+			/* Исключения для типов Serial и ID. Default игнорируем */
+			elseif ($column instanceof \TM\Type\Serial)
+			{
+				$column->default_sql = null;
+			}
+			/* Известный тип. Проверяем, подготавливаем и указываем */
+			else
 			{
 				try
 				{
@@ -177,12 +192,44 @@ trait Show_Init
 					$column->default_sql = $info['column_default'];
 				}
 			}
-			else
-			{
-				$column->default_sql = $info['column_default'];
-			}
 		}
 
+		/* null */
+		if ($info['is_nullable'] === "YES")
+			$column->null = true;
+		else if ($info['is_nullable'] === "NO")
+			$column->null = false;
+
+		/* unique */
+		if ($info['unique'])
+		{
+			$column->unique = true;
+			if (!empty($info['unique_column']))
+				$column->unique_key = implode("_", $info['unique_column']) . "_key";
+		}
+
+		/* index */
+		if ($info['index'])
+		{
+			$column->index = true;
+			if (!empty($info['index_column']))
+				$column->index_key = implode("_", $info['index_column']) . "_idx";
+		}
+
+		/* primary */
+		if ($info['primary'])
+			$column->primary = true;
+
+		/* Оставляем в $data данные отличныx от заданных по умолчанию */
+		$default = new $data['class'];
+		if ($default->default_sql !== null)
+			$default->default_sql = strtr($default->default_sql, ["{table}" => $table, "{column}" => $column->column]);
+
+		foreach ($column as $param => $value)
+		{
+			if ($column->{$param} !== $default->{$param})
+				$data[$param] = $value;
+		}
 
 		return $data;
 	}

@@ -64,7 +64,7 @@ class Column
 	 * Значение по умолчанию в формате SQL
 	 *
 	 * @var string
-	 * @example "now()", "currval('product_seq')"
+	 * @example "now()", "currval('product_seq')", nextval('"{table}_{column}_seq"'::regclass)
 	 */
 	public $default_sql;
 

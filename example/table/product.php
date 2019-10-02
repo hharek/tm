@@ -48,6 +48,16 @@ $c->default = 0.00;
 $c->index = true;
 Product::$columns[] = $c;
 
+$c = new Type\Order();
+$c->column = "Order";
+$c->name = "Сортировка";
+Product::$columns[] = $c;
+
+$c = new Type\Datetime();
+$c->column = "Last_Modufied";
+$c->name = "Дата последнего изменения";
+Product::$columns[] = $c;
+
 $c = new Type\Boolean();
 $c->column = "Active";
 $c->name = "Активность";

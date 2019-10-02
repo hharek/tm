@@ -12,18 +12,12 @@ class Serial extends UInt
 
 	public static function verify(array $info, string $table): bool
 	{
-		$default =
+		$default_sql =
 <<<SQL
-nextval('"{table}_{column}_seq"'::regclass)
+nextval('"{$table}_{$info['column_name']}_seq"'::regclass)
 SQL;
 
-		$default = strtr($default,
-		[
-			"{table}" => $table,
-			"{column}" => $info['column_name']
-		]);
-
-		if ($info['column_default'] === $default)
+		if ($info['column_default'] === $default_sql)
 			return true;
 
 		return false;
