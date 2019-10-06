@@ -324,9 +324,9 @@ class Column
 
 			case "bool":
 			case "boolean":
-				if ($value == "t")
+				if (in_array($value, PGSQL_BOOLEAN_TRUE))
 					return true;
-				else if ($value == "f")
+				else if (in_array($value, PGSQL_BOOLEAN_FALSE))
 					return false;
 				break;
 

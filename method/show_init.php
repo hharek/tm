@@ -56,7 +56,7 @@ trait Show_Init
 		$class = implode("_", $class_explode);
 
 		/* Код инициализации класса Table */
-		$php_code_table_init = strtr(\TM\PHP_TABLE_INIT,
+		$code .= strtr(\TM\PHP_TABLE_INIT,
 		[
 			"{name}" => $name,
 			"{class}" => $class,
@@ -65,10 +65,9 @@ trait Show_Init
 		]);
 
 		/* Код инициализации столбцов */
-		$php_code_column_init = "";
 		foreach ($info['column'] as $c)
 		{
-			$php_code_column_init .= "\n\n" . static::_show_init_column($c, $table);
+			$code .= "\n\n" . static::_show_init_column($c, $table, $class);
 		}
 
 		return $code;
@@ -79,9 +78,10 @@ trait Show_Init
 	 *
 	 * @param array $info
 	 * @param string $table
+	 * @param string $class
 	 * @return string
 	 */
-	private static function _show_init_column (array $info, string $table) : string
+	private static function _show_init_column (array $info, string $table, string $class) : string
 	{
 		$comment = $info['comment'];
 		$comment_explode = explode(\TM\SQL_COMMENT_SEPARATOR, $comment);
@@ -98,9 +98,32 @@ trait Show_Init
 			$column = static::_column_verify($info, $table);
 		}
 
-		print_r($column);
+		/* PHP-код */
+		$code =
+<<<PHP
+\$c = new {$column['class']}();\n
+PHP;
 
-		return "";
+		foreach ($column as $param => $value)
+		{
+			if ($param === "class")
+				continue;
+
+			$value = var_export($value, true);
+			$value = str_replace("'", '"', $value);
+
+			$code .=
+<<<PHP
+\$c->{$param} = {$value};\n
+PHP;
+		}
+
+		$code .=
+<<<PHP
+{$class}::\$columns[] = \$c;
+PHP;
+
+		return $code;
 	}
 
 	/**
@@ -332,7 +355,7 @@ trait Show_Init
 			if (in_array($dtype, ["character varying", "character"]))
 				$type_sql = $dtype . "(" . $info['character_maximum_length'] . ")";
 			else if ($dtype === "text")
-				$type_sql = $dtype . "(" . $info['character_maximum_length'] . ")";
+				$type_sql = $dtype;
 
 			$type_php = "string";
 		}
