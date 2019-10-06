@@ -197,16 +197,20 @@ SQL;
 		pg_free_result($result);
 
 		$unique = [];
-		foreach ($pg_index as $i)
+
+		if ($pg_index !== false)
 		{
-			$key = $i['indkey'];
-			if (empty($unique[$key]))
-				$unique[$key] = [];
+			foreach ($pg_index as $i)
+			{
+				$key = $i['indkey'];
+				if (empty($unique[$key]))
+					$unique[$key] = [];
 
-			$unique[$key][] = $i['attname'];
+				$unique[$key][] = $i['attname'];
+			}
+
+			$unique = array_values($unique);
 		}
-
-		$unique = array_values($unique);
 
 		return $unique;
 	}
@@ -238,16 +242,19 @@ SQL;
 		pg_free_result($result);
 
 		$index = [];
-		foreach ($pg_index as $i)
+		if ($pg_index !== false)
 		{
-			$key = $i['indkey'];
-			if (empty($index[$key]))
-				$index[$key] = [];
+			foreach ($pg_index as $i)
+			{
+				$key = $i['indkey'];
+				if (empty($index[$key]))
+					$index[$key] = [];
 
-			$index[$key][] = $i['attname'];
+				$index[$key][] = $i['attname'];
+			}
+
+			$index = array_values($index);
 		}
-
-		$index = array_values($index);
 
 		return $index;
 	}
