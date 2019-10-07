@@ -88,7 +88,7 @@ trait TCheck
 			if ($c->default !== null && $c->default_sql !== null)
 				throw new Exception("Нужно указать только один параметр «default» или «default_sql».", static::$schema, static::$table, static::$name, $c);
 
-			if ($c->default !== null)
+			if ($c->default !== null && $c->check !== null && is_callable($c->check))
 			{
 				try
 				{

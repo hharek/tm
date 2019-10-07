@@ -7,6 +7,13 @@ namespace TM;
 class Exception extends \Exception
 {
 	/**
+	 * Текст сообщения об ошибке
+	 *
+	 * @var string
+	 */
+	public $error;
+
+	/**
 	 * Наименование схемы
 	 *
 	 * @var string
@@ -41,16 +48,17 @@ class Exception extends \Exception
 	 * @param string $table
 	 * @param string $name
 	 * @param Column $column
-	 * @param string $message
+	 * @param string $error
 	 */
-	public function __construct(string $message, string $schema, string $table, string $name, Column $column)
+	public function __construct(string $error, string $schema, string $table, string $name, Column $column = null)
 	{
 		$this->schema = $schema;
 		$this->table = $table;
 		$this->name = $name;
 		$this->column = $column;
+		$this->error = $error;
 
-		parent::__construct($message);
+		parent::__construct("Поле «{$column->name}» задано неверно. " . $error);
 	}
 
 	/**
@@ -60,10 +68,11 @@ class Exception extends \Exception
 	 */
 	public function __toString()
 	{
-		return $this->name . ". " . $this->column->name . ". " . $this->message;
+		return $this->name . ". " . $this->column->name . ". " . $this->error;
 	}
 
 	/* get методы */
+	public function getError(): string { return $this->error; }
 	public function getSchema(): string { return $this->schema; }
 	public function getTable(): string { return $this->table; }
 	public function getName(): string  { return $this->name; }

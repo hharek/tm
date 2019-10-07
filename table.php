@@ -49,6 +49,7 @@ class Table
 		Method\Create,
 		Method\Debug,
 		Method\_Info,
-		Method\Show_Init;
+		Method\Show_Init,
+		Method\Check;
 }
 ?>
