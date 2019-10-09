@@ -22,6 +22,7 @@ trait Check
 			return;
 
 		/* Проверка */
+		$err = [];
 		foreach ($data as $key => $value)
 		{
 			/* Определяем столбец */
@@ -33,12 +34,14 @@ trait Check
 			}
 
 			if ($column === null)
-				throw new Exception("Столбец «{$key}» отсутствует.", static::$schema, static::$table, static::$name);
+				$err[] = new Exception("Столбец «{$key}» отсутствует.", static::$schema, static::$table, static::$name);
 
 			/* Проверяем столбец */
 			static::_check_value($column, $value);
 		}
 
+		if (empty($err))
+			throw new \TM\Exception_Many($err);
 
 		return true;
 	}
@@ -48,23 +51,28 @@ trait Check
 	 *
 	 * @param \TM\Column $column
 	 * @param $value
+	 * @param \TM\Exception[] $err
 	 */
-	private static function _check_value (\TM\Column $column, $value)
+	private static function _check_value (\TM\Column $column, $value, &$err = null)
 	{
 		/* null */
-		if ($value === null)
+		if (!$column->null && $value === null)
 		{
-			if (!$column->null)
+			if ($err !== null)
 				throw new Exception("Не может быть задан как NULL.", static::$schema, static::$table, static::$name, $column);
+			else
+				$err[$column->column] = new Exception("Не может быть задан как NULL.", static::$schema, static::$table, static::$name, $column);
 
 			return;
 		}
 
 		/* empty */
-		if (is_string($value) && trim($value) === "")
+		if (!$column->empty && is_string($value) && trim($value) === "")
 		{
-			if (!$column->empty)
+			if ($err !== null)
 				throw new Exception("Указана пустая строка.", static::$schema, static::$table, static::$name, $column);
+			else
+				$err[$column->column] = new Exception("Указана пустая строка.", static::$schema, static::$table, static::$name, $column);
 
 			return;
 		}
