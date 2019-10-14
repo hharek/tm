@@ -37,10 +37,10 @@ trait Check
 				$err[] = new Exception("Столбец «{$key}» отсутствует.", static::$schema, static::$table, static::$name);
 
 			/* Проверяем столбец */
-			static::_check_value($column, $value);
+			static::_check_value($column, $value, $err);
 		}
 
-		if (empty($err))
+		if (!empty($err))
 			throw new \TM\Exception_Many($err);
 
 		return true;
@@ -59,9 +59,9 @@ trait Check
 		if (!$column->null && $value === null)
 		{
 			if ($err !== null)
-				throw new Exception("Не может быть задан как NULL.", static::$schema, static::$table, static::$name, $column);
-			else
 				$err[$column->column] = new Exception("Не может быть задан как NULL.", static::$schema, static::$table, static::$name, $column);
+			else
+				throw new Exception("Не может быть задан как NULL.", static::$schema, static::$table, static::$name, $column);
 
 			return;
 		}
@@ -70,9 +70,9 @@ trait Check
 		if (!$column->empty && is_string($value) && trim($value) === "")
 		{
 			if ($err !== null)
-				throw new Exception("Указана пустая строка.", static::$schema, static::$table, static::$name, $column);
-			else
 				$err[$column->column] = new Exception("Указана пустая строка.", static::$schema, static::$table, static::$name, $column);
+			else
+				throw new Exception("Указана пустая строка.", static::$schema, static::$table, static::$name, $column);
 
 			return;
 		}
@@ -86,7 +86,10 @@ trait Check
 			}
 			catch (\Exception $e)
 			{
-				throw new Exception($e->getMessage(), static::$schema, static::$table, static::$name, $column);
+				if ($err !== null)
+					$err[$column->column] = new Exception($e->getMessage(), static::$schema, static::$table, static::$name, $column);
+				else
+					throw new Exception($e->getMessage(), static::$schema, static::$table, static::$name, $column);
 			}
 		}
 	}

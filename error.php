@@ -1,6 +1,8 @@
 <?php
 namespace TM;
 
+const ERROR_COLUMN = "Поле «{column}» задано неверно. {error}";
+
 /**
  * Исключение
  */
@@ -11,35 +13,35 @@ class Exception extends \Exception
 	 *
 	 * @var string
 	 */
-	private $_error;
+	public $error;
 
 	/**
 	 * Наименование схемы
 	 *
 	 * @var string
 	 */
-	private $_schema;
+	public $schema;
 
 	/**
 	 * Наименование таблицы в базе
 	 *
 	 * @var string
 	 */
-	private $_table;
+	public $table;
 
 	/**
 	 * Наименование
 	 *
 	 * @var string
 	 */
-	private $_name;
+	public $name;
 
 	/**
 	 * Столбец
 	 *
 	 * @var Column
 	 */
-	private $_column;
+	public $column;
 
 	/**
 	 * Конструктор
@@ -52,31 +54,31 @@ class Exception extends \Exception
 	 */
 	public function __construct(string $error, string $schema, string $table, string $name, Column $column = null)
 	{
-		$this->_error = $error;
-		$this->_schema = $schema;
-		$this->_table = $table;
-		$this->_name = $name;
-		$this->_column = $column;
+		$this->error = $error;
+		$this->schema = $schema;
+		$this->table = $table;
+		$this->name = $name;
+		$this->column = $column;
 
-		parent::__construct("Поле «{$column->name}» задано неверно. " . $error);
+		parent::__construct(strtr(ERROR_COLUMN, ["{column}" => $column->name, "{error}" => $error]));
 	}
 
 	/**
-	 * При преобразовании в строку
+	 * Преобразование в строку
 	 *
-	 * @return string|void
+	 * @return string
 	 */
-	public function __toString()
+	public function __toString() : string
 	{
-		return $this->getName() . ". " . $this->getColumn()->name . ". " . $this->getError();
+		return strtr(ERROR_COLUMN, ["{column}" => $this->column->name, "{error}" => $this->error]);
 	}
 
 	/* get методы */
-	public function getError(): string { return $this->_error; }
-	public function getSchema(): string { return $this->_schema; }
-	public function getTable(): string { return $this->_table; }
-	public function getName(): string  { return $this->_name; }
-	public function getColumn(): Column { return $this->_column; }
+	public function getError(): string { return $this->error; }
+	public function getSchema(): string { return $this->schema; }
+	public function getTable(): string { return $this->table; }
+	public function getName(): string  { return $this->name; }
+	public function getColumn(): Column { return $this->column; }
 }
 
 /**
@@ -89,7 +91,7 @@ class Exception_Many extends Exception
 	 *
 	 * @var Exception[]
 	 */
-	public $_err = [];
+	public $err = [];
 
 	/**
 	 * Конструктор
@@ -98,19 +100,23 @@ class Exception_Many extends Exception
 	 */
 	public function __construct(array $err)
 	{
-		$this->_err = $err;
+		$this->err = $err;
 
 		$e = current($err);
 
-		parent::__construct($e->getError(), $e->getSchema(), $e->getTable(), $e->getName(), $e->getColumn());
+		parent::__construct($e->error, $e->schema, $e->table, $e->name, $e->column);
 	}
 
-	public function __toString()
+	public function __toString() : string
 	{
-		return parent::__toString();
+		$err_str = [];
+		foreach ($this->err as $e)
+			$err_str[] = strtr(ERROR_COLUMN, ["{column}" => $e->column->name, "{error}" => $e->error]);
+
+		return implode("\n", $err_str);
 	}
 
-	/* Получить список ошибок */
-	public function getErr() { return $this->_err; }
+	/* get метод */
+	public function getErr() { return $this->err; }
 }
 ?>

@@ -12,9 +12,10 @@ try
 		"Price" => "test"			/* Ошибка. Ожидает unsigned int */
 	]);
 }
-catch (\TM\Exception_Many $e)
+catch (\TM\Exception_Many $ex)
 {
-	print_r($e);
+	foreach ($ex->getErr() as $e)
+		echo $e->getName() . ". Поле «" . $e->getColumn()->name . "» задано неверно. " . $e->getError() . "\n";
 }
 catch (\TM\Exception $e)
 {
@@ -24,8 +25,4 @@ catch (Exception $e)
 {
 	echo $e->getMessage();
 }
-
-
-
-
 ?>
