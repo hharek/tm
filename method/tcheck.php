@@ -145,29 +145,48 @@ trait TCheck
 				throw new Exception('Параметр «equal» указан неверно. Допустимные значения: "' . implode('", "', \TM\EQUAL_ALLOW) . '".', static::$schema, static::$table, static::$name, $c);
 
 			/* check, prepare, process */
-			if ($c->check !== null && is_callable($c->check))
-				throw new Exception("Параметр «check» указан неверно. Необходимо указать строку с названием функции или назначить функцию обратного вызова.", static::$schema, static::$table, static::$name, $c);
+			if ($c->check !== null)
+			{
+				if (is_array($c->check) && count($c->check) == 2 && isset($c->check[0]) && isset($c->check[1]) && in_array($c->check[0], ["static", "self"]))
+				{
+					if (!is_callable([get_class($c), $c->check[1]]))
+						throw new Exception("Параметр «check» указан неверно. Необходимо указать строку с названием функции или назначить функцию обратного вызова.", static::$schema, static::$table, static::$name, $c);
+				}
+				else
+				{
+					if (!is_callable($c->check))
+						throw new Exception("Параметр «check» указан неверно. Необходимо указать строку с названием функции или назначить функцию обратного вызова.", static::$schema, static::$table, static::$name, $c);
+				}
+			}
 
-			if ($c->prepare !== null && is_callable($c->prepare))
-				throw new Exception("Параметр «prepare» указан неверно. Необходимо указать строку с названием функции или назначить функцию обратного вызова.", static::$schema, static::$table, static::$name, $c);
+			if ($c->prepare !== null)
+			{
+				if (is_array($c->prepare) && count($c->prepare) == 2 && isset($c->prepare[0]) && isset($c->prepare[1]) && in_array($c->prepare[0], ["static", "self"]))
+				{
+					if (!is_callable([get_class($c), $c->prepare[1]]))
+						throw new Exception("Параметр «prepare» указан неверно. Необходимо указать строку с названием функции или назначить функцию обратного вызова.", static::$schema, static::$table, static::$name, $c);
+				}
+				else
+				{
+					if (!is_callable($c->prepare))
+						throw new Exception("Параметр «prepare» указан неверно. Необходимо указать строку с названием функции или назначить функцию обратного вызова.", static::$schema, static::$table, static::$name, $c);
+				}
+			}
 
-			if ($c->process !== null && is_callable($c->process))
-				throw new Exception("Параметр «process» указан неверно. Необходимо указать строку с названием функции или назначить функцию обратного вызова.", static::$schema, static::$table, static::$name, $c);
+			if ($c->process !== null)
+			{
+				if (is_array($c->process) && count($c->process) == 2 && isset($c->process[0]) && isset($c->process[1]) && in_array($c->process[0], ["static", "self"]))
+				{
+					if (!is_callable([get_class($c), $c->process[1]]))
+						throw new Exception("Параметр «process» указан неверно. Необходимо указать строку с названием функции или назначить функцию обратного вызова.", static::$schema, static::$table, static::$name, $c);
+				}
+				else
+				{
+					if (!is_callable($c->process))
+						throw new Exception("Параметр «process» указан неверно. Необходимо указать строку с названием функции или назначить функцию обратного вызова.", static::$schema, static::$table, static::$name, $c);
+				}
+			}
 		}
-
-		/* Первичный ключ */
-		$primary_count = 0;
-		foreach (static::$columns as $c)
-		{
-			if ($c->primary)
-				$primary_count++;
-		}
-
-		if ($primary_count === 0)
-			throw new \Exception("Не указан первичный ключ для таблицы.");
-
-		if ($primary_count > 1)
-			throw new \Exception("Указано более одного первичного ключа.");
 
 		/* order */
 		$order_index_ar = [];

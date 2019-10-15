@@ -9,12 +9,11 @@ trait _Meta
 	use \TM\Table_Params;
 
 	/**
-	 * Сведения по первичному ключу
-	 * Может быть только один столбец
+	 * Поля входящие в первичный ключ
 	 *
-	 * @var \TM\Column
+	 * @var \TM\Column[]
 	 */
-	protected static $_primary;
+	protected static $_primary = [];
 
 	/**
 	 * Уникальные ключи
@@ -42,13 +41,18 @@ trait _Meta
 	 */
 	private static function _meta ()
 	{
+		/* Обнуляем */
+		static::$_primary = [];
+		static::$_unique = [];
+		static::$_index = [];
+		static::$_order = [];
+
 		/* Первичные ключи */
 		foreach (static::$columns as $c)
 		{
 			if ($c->primary)
 			{
-				static::$_primary = $c;
-				break;
+				static::$_primary[] = $c;
 			}
 		}
 

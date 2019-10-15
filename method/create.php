@@ -9,7 +9,6 @@ CREATE TABLE {table}
 (
 {column}{primary}{unique}
 );
-
 {index}
 {comment_table}
 {comment_column}
@@ -27,7 +26,7 @@ SQL;
 
 const SQL_CREATE_PRIMARY =
 <<<SQL
-\tPRIMARY KEY ("{column}")
+\tPRIMARY KEY ({column})
 SQL;
 
 const SQL_CREATE_UNIQUE =
@@ -98,33 +97,49 @@ trait Create
 		$sql_column = implode(",\n", $sql_column_part);
 
 		/* Первичный ключ */
-		$sql_primary = ",\n" . strtr(\TM\SQL_CREATE_PRIMARY, ["{column}" => static::$_primary->column]);
+		$sql_primary = "";
+		if (!empty(static::$_primary))
+		{
+			$column = array_column((array)static::$_primary, "column");
+			$sql_primary = ",\n" . strtr(\TM\SQL_CREATE_PRIMARY,
+			[
+				"{column}" => '"' . implode('", "', $column) . '"'
+			]);
+		}
 
 		/* Уникальные ключи */
-		$sql_unique_part = [];
-		foreach (static::$_unique as $u)
+		$sql_unique = "";
+		if (!empty(static::$_unique))
 		{
-			$unique_column = array_column((array)$u, "column");
-			$sql_unique_part[] = strtr(\TM\SQL_CREATE_UNIQUE,
-			[
-				"{column}" => '"' . implode('", "', $unique_column) . '"'
-			]);
+			$sql_unique_part = [];
+			foreach (static::$_unique as $u)
+			{
+				$unique_column = array_column((array)$u, "column");
+				$sql_unique_part[] = strtr(\TM\SQL_CREATE_UNIQUE,
+				[
+					"{column}" => '"' . implode('", "', $unique_column) . '"'
+				]);
+			}
+			$sql_unique = ",\n" . implode(",\n", $sql_unique_part);
 		}
-		$sql_unique = ",\n" . implode(",\n", $sql_unique_part);
 
 		/* Индексы */
-		$sql_index_part = [];
-		foreach (static::$_index as $key => $i)
+		$sql_index = "";
+		if (!empty(static::$_index))
 		{
-			$index_column = array_column((array)$i, "column");
-			$sql_index_part[] = strtr(\TM\SQL_CREATE_INDEX,
-			[
-				"{table}" => static::$table,
-				"{num}" => ++$key,
-				"{column}" => '"' . implode('", "', $index_column) . '"'
-			]);
+			$sql_index_part = [];
+			foreach (static::$_index as $key => $i)
+			{
+				$index_column = array_column((array)$i, "column");
+				$sql_index_part[] = strtr(\TM\SQL_CREATE_INDEX,
+					[
+						"{table}" => static::$table,
+						"{num}" => ++$key,
+						"{column}" => '"' . implode('", "', $index_column) . '"'
+					]);
+			}
+			$sql_index = "\n" . implode("\n", $sql_index_part);
 		}
-		$sql_index = implode("\n", $sql_index_part) . "\n";
 
 		/* Комментарий таблицы */
 		$comment = pg_escape_string(static::$name);
@@ -140,7 +155,7 @@ trait Create
 			$comment .= \TM\SQL_COMMENT_SEPARATOR . pg_escape_string(json_encode($table_data, JSON_UNESCAPED_UNICODE));
 		}
 
-		$sql_comment_table = strtr(\TM\SQL_CREATE_COMMENT_TABLE,
+		$sql_comment_table = "\n" . strtr(\TM\SQL_CREATE_COMMENT_TABLE,
 		[
 			"{table}" => static::_table(true),
 			"{comment}" => $comment
