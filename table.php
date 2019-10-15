@@ -50,6 +50,7 @@ class Table
 		Method\Debug,
 		Method\_Info,
 		Method\Show_Init,
-		Method\Check;
+		Method\Check,
+		Method\Unique;
 }
 ?>
