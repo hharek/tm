@@ -11,7 +11,7 @@ class IP extends \TM\Column
 	public $type_php = "string";
 	public $index = true;
 
-	public static function check($value, \TM\Column $column = null): bool
+	public function check ($value) : bool
 	{
 		if (!is_string($value))
 			throw new \Exception("Не является строкой.");
@@ -22,7 +22,7 @@ class IP extends \TM\Column
 		return true;
 	}
 
-	public static function verify(array $info, string $table): bool
+	public static function verify (array $info, string $table) : bool
 	{
 		/* https://postgrespro.ru/docs/postgresql/11/datatype-net-types */
 

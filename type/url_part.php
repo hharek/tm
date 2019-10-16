@@ -10,7 +10,7 @@ class Url_Part extends \TM\Column
 	public $type_php = "string";
 	public $prepare = "mb_strtolower";
 
-	public static function check($value, \TM\Column $column = null): bool
+	public function check ($value) : bool
 	{
 		if (!is_string($value))
 			throw new \Exception("Не является строкой.");

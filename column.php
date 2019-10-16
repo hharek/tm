@@ -9,6 +9,17 @@ namespace TM;
 class Column
 {
 	/**
+	 * Конструктор.
+	 * Переменным назначаем closure, для возможности переопределния при инициализации
+	 */
+	public function __construct()
+	{
+		$this->check = function ($value) { return $this->check($value); };
+		$this->prepare = function ($value) { return $this->prepare($value); };
+		$this->process = function ($value) { return $this->process($value); };
+	}
+
+	/**
 	 * Наименование столбца
 	 *
 	 * @var string
@@ -166,41 +177,43 @@ class Column
 	/**
 	 * Функция проверка значения перед запросом
 	 * Может быть строка с наименованием функции или функцией обратного вызова. Функция должна вернуть «boolean» значение или вызвать исключение.
-	 * Если указан метод, то он должен быть статическим. Чтобы не проверять значение укажите «null»
+	 * Если указан метод, то он должен быть статическим. Чтобы не проверять значение укажите «null». Для использования данных объекта используйте «use».
 	 *
 	 * @var callable
-	 * @example "is_numeric", ["static", "check"], function (string $value) : bool { if (!is_numeric($value)) throw new \Exception("Не число"); return true; }; , null
+	 * @example "is_numeric", ["MyClass", "check"], "MyClass::check", function (string $value) : bool { if (!is_numeric($value)) throw new \Exception("Не число"); return true; }; , null
 	 */
-	public $check = ["static", "check"];
+	public $check;
 
 	/**
 	 * Функция обработки значения перед запросом
-	 * Может быть строка с наименованием функции или функцией обратного вызова. Функция должна вернуть «string». Чтобы не обрабатывать значение укажите «null»
+	 * Может быть строка с наименованием функции или функцией обратного вызова. Функция должна вернуть «string».
+	 * Если указан метод, то он должен быть статическим. Чтобы не обрабатывать значение укажите «null». Для использования данных объекта используйте «use».
 	 *
 	 * @var callable
-	 * @example "strtolower", ["static", "prepare"], function (string $value) : string { return date ("Y-m-d", strtotime($value)); }; null
+	 * @example "strtolower", function ($value) : string { return date ("Y-m-d", strtotime($value)); }; null
 	 */
-	public $prepare = ["static", "prepare"];
+	public $prepare;
 
 	/**
 	 * Функция обработки значения после запроса
+	 * Может быть строка с наименованием функции или функцией обратного вызова.
+	 * Если указан метод, то он должен быть статическим. Чтобы не обрабатывать значение укажите «null». Для использования данных объекта используйте «use».
 	 *
 	 * @var callable
 	 * @example function ($value) { return json_decode($value, true); }
 	 */
-	public $process = ["static", "process"];
+	public $process;
 
 	/**
 	 * Функция проверка значения перед запросом
 	 * Используется по умолчанию, если не указана другая функция в переменной $this->check
 	 *
 	 * @param mixed $value
-	 * @param Column|null $column
 	 * @return bool
 	 */
-	public static function check ($value, Column $column = null) : bool
+	public function check ($value) : bool
 	{
-		switch ($column->type_php)
+		switch ($this->type_php)
 		{
 			case "string":
 				if (!is_string($value) || is_numeric($value))
@@ -254,12 +267,11 @@ class Column
 	 * Используется по умолчанию, если не указана другая функция в переменной $this->prepare
 	 *
 	 * @param mixed $value
-	 * @param Column|null $column
 	 * @return string
 	 */
-	public static function prepare ($value, Column $column = null) : string
+	public function prepare ($value) : string
 	{
-		switch ($column->type_php)
+		switch ($this->type_php)
 		{
 			case "bool":
 			case "boolean":
@@ -304,12 +316,11 @@ class Column
 	 * Используется по умолчанию, если не указана другая функция в переменной $this->process
 	 *
 	 * @param string $value
-	 * @param Column|null $column
 	 * @return mixed
 	 */
-	public static function process (string $value, Column $column = null)
+	public function process (string $value)
 	{
-		switch ($column->type_php)
+		switch ($this->type_php)
 		{
 			case "int":
 			case "integer":

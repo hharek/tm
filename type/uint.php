@@ -6,9 +6,9 @@ namespace TM\Type;
  */
 class UInt extends _Int
 {
-	public static function check ($value, \TM\Column $column = null) : bool
+	public function check ($value) : bool
 	{
-		_Int::check($value, $column);
+		parent::check($value);
 
 		if ((int)$value < 0)
 			throw new \Exception("Отрицательное число.");

@@ -12,7 +12,7 @@ class Datetime extends \TM\Column
 	public $require = false;
 	public $index = true;
 
-	public static function check($value, \TM\Column $column = null): bool
+	public function check ($value): bool
 	{
 		if (strtotime($value) === false)
 			throw new \Exception("Не является строкой даты или времени.");
@@ -20,12 +20,12 @@ class Datetime extends \TM\Column
 		return true;
 	}
 
-	public static function prepare($value, \TM\Column $column = null): string
+	public function prepare ($value): string
 	{
 		return date ("Y-m-d H:i:s", strtotime($value));
 	}
 
-	public static function verify(array $info, string $table): bool
+	public static function verify (array $info, string $table): bool
 	{
 		/* https://postgrespro.ru/docs/postgresql/11/datatype-datetime */
 

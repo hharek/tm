@@ -10,7 +10,7 @@ class Price extends \TM\Column
 	public $type_php = "float";
 	public $index = true;
 
-	public static function check($value, \TM\Column $column = null): bool
+	public function check ($value) : bool
 	{
 		if (is_string($value))
 			$value = str_replace(",", ".", $value);
@@ -24,7 +24,7 @@ class Price extends \TM\Column
 		return true;
 	}
 
-	public static function prepare($value, \TM\Column $column = null): string
+	public function prepare ($value) : string
 	{
 		if (is_string($value))
 			return str_replace(",", ".", $value);
@@ -32,7 +32,7 @@ class Price extends \TM\Column
 			return (string)$value;
 	}
 
-	public static function verify(array $info, string $table): bool
+	public static function verify (array $info, string $table) : bool
 	{
 		if ($info['data_type'] === "money")
 			return true;

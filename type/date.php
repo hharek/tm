@@ -18,7 +18,7 @@ class Date extends \TM\Column
 	 */
 	public $date_format = "d.m.Y";
 
-	public static function check($value, \TM\Column $column = null): bool
+	public function check ($value) : bool
 	{
 		if (strtotime($value) === false)
 			throw new \Exception("Не является строкой даты или времени.");
@@ -26,22 +26,17 @@ class Date extends \TM\Column
 		return true;
 	}
 
-	public static function prepare($value, \TM\Column $column = null): string
+	public function prepare ($value) : string
 	{
 		return date ("Y-m-d", strtotime($value));
 	}
 
-	/**
-	 * @param string $value
-	 * @param \TM\Column|Date|null $column
-	 * @return string
-	 */
-	public static function process(string $value, \TM\Column $column = null)
+	public function process (string $value)
 	{
-		return date ($column->date_format, strtotime($value));
+		return date ($this->date_format, strtotime($value));
 	}
 
-	public static function verify(array $info, string $table): bool
+	public static function verify (array $info, string $table) : bool
 	{
 		/* https://postgrespro.ru/docs/postgresql/11/datatype-datetime */
 

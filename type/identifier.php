@@ -12,7 +12,7 @@ class Identifier extends \TM\Column
 	public $prepare = "strtolower";
 	public $unique = true;
 
-	public static function check($value, \TM\Column $column = null): bool
+	public function check ($value) : bool
 	{
 		if (!is_string($value))
 			throw new \Exception("Не является строкой.");

@@ -17,18 +17,13 @@ class Enum extends \TM\Column
 	 */
 	public $enum_values = [];
 
-	/**
-	 * @param mixed $value
-	 * @param \TM\Column|null $column
-	 * @return bool
-	 */
-	public static function check($value, \TM\Column $column = null): bool
+	public function check ($value) : bool
 	{
 		if (!is_scalar($value))
 			throw new \Exception("Недопустимое значение");
 
-		if (!in_array($value, $column->enum_values))
-			throw new \Exception("Доступные значения: " . implode(", ", $column->enum_values) . ".");
+		if (!in_array($value, $this->enum_values))
+			throw new \Exception("Доступные значения: " . implode(", ", $this->enum_values) . ".");
 
 		return true;
 	}

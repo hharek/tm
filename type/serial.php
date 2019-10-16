@@ -10,7 +10,7 @@ class Serial extends UInt
 	public $type_sql = "serial";
 	public $require = false;
 
-	public static function verify(array $info, string $table): bool
+	public static function verify (array $info, string $table) : bool
 	{
 		$default_sql =
 <<<SQL

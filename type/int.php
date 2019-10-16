@@ -9,7 +9,7 @@ class _Int extends \TM\Column
 	public $type_sql = "int";
 	public $type_php = "int";
 
-	public static function check ($value, \TM\Column $column = null) : bool
+	public function check ($value) : bool
 	{
 		if (!is_numeric($value))
 			throw new \Exception("Не является числом.");
@@ -23,7 +23,7 @@ class _Int extends \TM\Column
 		return true;
 	}
 
-	public static function verify(array $info, string $table): bool
+	public static function verify (array $info, string $table) : bool
 	{
 		/* https://postgrespro.ru/docs/postgresql/11/datatype-numeric#DATATYPE-INT */
 

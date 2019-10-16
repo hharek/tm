@@ -9,7 +9,7 @@ class Path extends \TM\Column
 	public $type_sql = "varchar(255)";
 	public $type_php = "string";
 
-	public static function check($value, \TM\Column $column = null): bool
+	public function check ($value) : bool
 	{
 		if (!is_string($value))
 			throw new \Exception("Не является строкой.");

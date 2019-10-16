@@ -10,7 +10,7 @@ class _String extends \TM\Column
 	public $type_php = "string";
 	public $equal = "ilike";
 
-	public static function check ($value, \TM\Column $column = null) : bool
+	public function check ($value) : bool
 	{
 		if (!is_string($value) || is_numeric($value))
 			throw new \Exception("Недопустимое значение.");
@@ -34,7 +34,7 @@ class _String extends \TM\Column
 		return true;
 	}
 
-	public static function verify(array $info, string $table): bool
+	public static function verify (array $info, string $table) : bool
 	{
 		/* https://postgrespro.ru/docs/postgresql/11/datatype-character */
 

@@ -14,7 +14,7 @@ class Order extends UInt
 currval('"{table}_ID_seq"'::regclass)
 SQL;
 
-	public static function verify(array $info, string $table): bool
+	public static function verify (array $info, string $table) : bool
 	{
 		$o = new Order();
 		$default_sql = $o->default_sql;

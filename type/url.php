@@ -10,7 +10,7 @@ class Url extends \TM\Column
 	public $type_php = "string";
 	public $prepare = "mb_strtolower";
 
-	public static function check($value, \TM\Column $column = null): bool
+	public function check ($value) : bool
 	{
 		if (!is_string($value))
 			throw new \Exception("Не является строкой.");
@@ -19,11 +19,18 @@ class Url extends \TM\Column
 		if ($parse_url === false)
 			throw new \Exception("Некорректный урл");
 
+
 		if (!empty($parse_url['path']))
-			Url_Path::check($parse_url['path']);
+		{
+			$url_path = new Url_Path();
+			$url_path->check($parse_url['path']);
+		}
 
 		if (!empty($parse_url['query']))
-			_String::check($parse_url['query']);
+		{
+			$string = new _String();
+			$string->check($parse_url['query']);
+		}
 
 		return true;
 	}

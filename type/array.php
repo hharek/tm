@@ -10,7 +10,7 @@ class _Array extends \TM\Column
 	public $type_php = "array";
 	public $lite = false;
 
-	public static function verify(array $info, string $table): bool
+	public static function verify (array $info, string $table) : bool
 	{
 		/* https://postgrespro.ru/docs/postgresql/11/datatype-json */
 

@@ -9,7 +9,7 @@ class _Float extends \TM\Column
 	public $type_sql = "float";
 	public $type_php = "float";
 
-	public static function verify(array $info, string $table): bool
+	public static function verify (array $info, string $table) : bool
 	{
 		/* https://postgrespro.ru/docs/postgresql/11/datatype-numeric#DATATYPE-FLOAT */
 

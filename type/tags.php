@@ -6,7 +6,7 @@ namespace TM\Type;
  */
 class Tags extends Text
 {
-	public static function check($value, \TM\Column $column = null): bool
+	public function check ($value) : bool
 	{
 		if (!is_string($value))
 			throw new \Exception("Не является строкой.");

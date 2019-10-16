@@ -10,7 +10,7 @@ class Url_Path extends \TM\Column
 	public $type_php = "string";
 	public $prepare = "mb_strtolower";
 
-	public static function check($value, \TM\Column $column = null): bool
+	public function check ($value) : bool
 	{
 		if (!is_string($value))
 			throw new \Exception("Не является строкой.");
@@ -23,9 +23,10 @@ class Url_Path extends \TM\Column
 			$value = mb_substr($value, 0, mb_strlen($value) - 1);
 
 		/* Разбор */
+		$url_part = new Url_Part();
 		$value_ar = explode("/", $value);
 		foreach ($value_ar as $v)
-			Url_Part::check($v);
+			$url_part->check($v);
 
 		return true;
 	}
