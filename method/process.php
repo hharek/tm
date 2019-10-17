@@ -6,8 +6,7 @@ namespace TM\Method;
  */
 trait Process
 {
-	use \TM\Table_Params,
-		_Meta;
+	use \TM\Table_Params;
 
 	/**
 	 * Обрабатываем данные после запроса
@@ -16,7 +15,26 @@ trait Process
 	 */
 	public static function process (array $data) : array
 	{
-		static::_meta();
+		foreach ($data as $key => $value)
+		{
+			/* Определяем столбец */
+			$column = null;
+			foreach (static::$columns as $c)
+			{
+				if ($c->column === $key)
+				{
+					$column = $c;
+					break;
+				}
+			}
+
+			if ($column === null)
+				break;
+
+			/* process */
+			if ($column->process !== null && $value !== null)
+				$data[$key] = call_user_func($column->process, $value);
+		}
 
 		return $data;
 	}

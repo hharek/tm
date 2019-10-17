@@ -70,6 +70,12 @@ $c->prepare = function (DateTime $value) use ($c) : string		/* Своя функ
 {
 	return $value->format($c->datetime_format_sql);
 };
+
+$c->process = function (string $value)				/* Своя функция обработки значения запроса. Возращаяем объект Datetime вместо строки */
+{
+	return new Datetime($value);
+};
+
 Product::$columns[] = $c;
 
 $c = new Type\Boolean();

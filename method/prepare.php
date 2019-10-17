@@ -8,8 +8,7 @@ use TM\Exception;
  */
 trait Prepare
 {
-	use \TM\Table_Params,
-		_Meta;
+	use \TM\Table_Params;
 
 	/**
 	 * Подготавливаем данные для запроса
@@ -20,8 +19,6 @@ trait Prepare
 	 */
 	public static function prepare (array $data, bool $check = true) : array
 	{
-		static::_meta();
-
 		if ($check)
 			static::check($data);
 
@@ -32,8 +29,14 @@ trait Prepare
 			foreach (static::$columns as $c)
 			{
 				if ($c->column === $key)
+				{
 					$column = $c;
+					break;
+				}
 			}
+
+			if ($column === null)
+				break;
 
 			/* prepare */
 			if ($column->prepare !== null && $value !== null)
