@@ -12,8 +12,25 @@ class Datetime extends \TM\Column
 	public $require = false;
 	public $index = true;
 
+	/**
+	 * Формат даты и времени
+	 *
+	 * @var string
+	 */
+	public $datetime_format = "d.m.Y - H:i:s";
+
+	/**
+	 * Формат даты и времени в запросе
+	 *
+	 * @var string
+	 */
+	public $datetime_format_sql = "Y-m-d H:i:s";
+
 	public function check ($value): bool
 	{
+		if (is_string($value) && in_array($value, ["now", "now()"]))
+			return true;
+
 		if (strtotime($value) === false)
 			throw new \Exception("Не является строкой даты или времени.");
 
@@ -22,7 +39,15 @@ class Datetime extends \TM\Column
 
 	public function prepare ($value): string
 	{
-		return date ("Y-m-d H:i:s", strtotime($value));
+		if (is_string($value) && in_array($value, ["now", "now()"]))
+			return "now()";
+
+		return date($this->datetime_format_sql, strtotime($value));
+	}
+
+	public function process (string $value)
+	{
+		return date($this->datetime_format, strtotime($value));
 	}
 
 	public static function verify (array $info, string $table): bool

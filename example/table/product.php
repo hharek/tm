@@ -23,20 +23,21 @@ $c->unique = true;
 $c->require = false;
 $c->null = true;
 $c->empty = true;
+$c->prepare = "strtolower";		/* Значение в SQL-запросе будет в нижнем регистре */
 Product::$columns[] = $c;
 
 $c = new Type\Str();
 $c->column = "Name";
 $c->name = "Наименование";
 $c->unique = true;
-$c->unique_key = "Name_UN";
+$c->unique_key = "Name_UN";		/* UNIQUE ("Name", "Category_ID") */
 Product::$columns[] = $c;
 
 $c = new Type\UInt();
 $c->column = "Category_ID";
 $c->name = "Категория";
 $c->unique = true;
-$c->unique_key = "Name_UN";
+$c->unique_key = "Name_UN";		/* UNIQUE ("Name", "Category_ID") */
 $c->null = true;
 Product::$columns[] = $c;
 
@@ -56,6 +57,19 @@ Product::$columns[] = $c;
 $c = new Type\Datetime();
 $c->column = "Last_Modufied";
 $c->name = "Дата последнего изменения";
+
+$c->check = function ($value) use ($c) : bool			/* Своя функция проверки. Работаем только с объектом Datetime */
+{
+	if (!($value instanceof DateTime))
+		throw new Exception("Не является объектом класса Datetime");
+
+	return true;
+};
+
+$c->prepare = function (DateTime $value) use ($c) : string		/* Своя функция обработки перед запросом. Работаем только с объектом Datetime */
+{
+	return $value->format($c->datetime_format_sql);
+};
 Product::$columns[] = $c;
 
 $c = new Type\Boolean();

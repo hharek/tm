@@ -45,12 +45,15 @@ class Table
 	use Table_Params,
 		Method\_Table,
 		Method\_Meta,
+		Method\_Info,
 		Method\TCheck,
 		Method\Create,
 		Method\Debug,
-		Method\_Info,
 		Method\Show_Init,
 		Method\Check,
+		Method\Prepare,
+		Method\Process,
+		Method\Is,
 		Method\Unique;
 }
 ?>
