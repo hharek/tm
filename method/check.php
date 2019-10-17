@@ -82,7 +82,9 @@ trait Check
 		{
 			try
 			{
-				call_user_func(get_class($column) . "::check", $value, $column);
+				$result = call_user_func($column->check, $value);
+				if ($result === false)
+					throw new \Exception("Не соответствует типу.");
 			}
 			catch (\Exception $e)
 			{
