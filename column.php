@@ -278,16 +278,16 @@ class Column
 				if (is_bool($value))
 				{
 					if ($value === true)
-						return "1";
+						return "t";
 					else if ($value === false)
-						return "0";
+						return "f";
 				}
 				elseif (is_string($value))
 				{
 					if (in_array($value, PGSQL_BOOLEAN_TRUE))
-						return "1";
+						return "t";
 					elseif (in_array($value, PGSQL_BOOLEAN_FALSE))
-						return "0";
+						return "f";
 				}
 				else
 				{
@@ -335,9 +335,9 @@ class Column
 
 			case "bool":
 			case "boolean":
-				if (in_array($value, PGSQL_BOOLEAN_TRUE))
+				if ($value === "t" || in_array($value, PGSQL_BOOLEAN_TRUE))
 					return true;
-				else if (in_array($value, PGSQL_BOOLEAN_FALSE))
+				else if ($value === "f" || in_array($value, PGSQL_BOOLEAN_FALSE))
 					return false;
 				break;
 
